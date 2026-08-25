@@ -152,6 +152,32 @@ python launcher.py --help
 
 Die Anwendung wird absichtlich nur an `127.0.0.1` gebunden und ist damit standardmässig nicht aus dem Netzwerk erreichbar. Falls Port 8000 bereits belegt ist, beendet sich der Launcher mit einer verständlichen Meldung und schlägt einen anderen Port vor.
 
+## Lokale Logdatei fortlaufend einlesen
+
+Die Live-Ingestion läuft bewusst als separater Prozess und verändert den
+bestehenden Upload-Ablauf nicht:
+
+```bash
+python live_ingest.py --log-file /var/log/auth.log
+```
+
+Standardmässig beginnt die Überwachung am aktuellen Dateiende und speichert nur
+neu angehängte, unterstützte SSH-Ereignisse in `data/ssh_sentinel.db`. Für eine
+andere Datenbank, ein anderes Polling-Intervall oder das Einlesen vorhandener
+Zeilen stehen folgende Optionen bereit:
+
+```bash
+python live_ingest.py \
+  --log-file examples/auth_short_bad.log \
+  --database data/ssh_sentinel.db \
+  --poll-interval 0.5 \
+  --from-start
+```
+
+Die Überwachung wird mit `Ctrl+C` kontrolliert beendet. Zeitstempel ohne Jahr
+werden in der lokalen Systemzeitzone interpretiert und vor dem Speichern nach
+UTC umgerechnet.
+
 ## Eigenständige ausführbare Datei erstellen
 
 Die Anwendung wird mit PyInstaller als einzelne ausführbare Datei verpackt. Für die Ausführung des mit PyInstaller erstellten Programms ist auf dem Zielsystem keine separate Python-Installation und keine manuelle Installation der in requirements.txt aufgeführten Python-Pakete erforderlich. Die Jinja2-Templates, das CSS und das Drag-and-drop-JavaScript sind im Executable enthalten.
