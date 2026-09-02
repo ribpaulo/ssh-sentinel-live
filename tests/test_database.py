@@ -1,10 +1,17 @@
 import sqlite3
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
-from database import AlertData, AlertStatus, Database, EventData
+from database import (
+    AlertData,
+    AlertMutation,
+    AlertStatus,
+    Database,
+    EventData,
+)
 from models.analysis import EventType
 
 
@@ -71,7 +78,9 @@ def test_initialize_creates_parent_directory_tables_and_indexes(tmp_path: Path) 
     assert {
         "idx_events_event_timestamp",
         "idx_events_ip_address",
+        "idx_events_type_ip_timestamp_jd",
         "idx_alerts_status",
+        "idx_alerts_rule_ip_status_window_jd",
     } <= indexes
 
 
@@ -215,3 +224,92 @@ def test_data_persists_across_database_instances(tmp_path: Path) -> None:
 
     assert stored is not None
     assert stored["ip_address"] == "203.0.113.10"
+
+
+def test_active_alert_creation_counts_unique_linked_events(database: Database) -> None:
+    first_event_id = database.save_event(event_data())
+    second_event_id = database.save_event(event_data("2026-08-25T10:01:00Z"))
+    alert = replace(alert_data(), event_count=99)
+
+    result = database.save_or_extend_active_alert(
+        alert,
+        [first_event_id, first_event_id, second_event_id],
+        evaluated_event_id=second_event_id,
+    )
+    stored = database.get_alert_with_events(result.alert_id)
+
+    assert result.action == AlertMutation.CREATED
+    assert result.event_count == 2
+    assert stored is not None
+    assert stored["event_count"] == 2
+    assert [event["id"] for event in stored["events"]] == [
+        first_event_id,
+        second_event_id,
+    ]
+
+
+def test_active_alert_extension_rolls_back_if_event_linking_fails(
+    database: Database,
+) -> None:
+    first_event_id = database.save_event(event_data())
+    initial = database.save_or_extend_active_alert(
+        alert_data(),
+        [first_event_id],
+        evaluated_event_id=first_event_id,
+    )
+    before = database.get_alert_with_events(initial.alert_id)
+    second_event_id = database.save_event(event_data("2026-08-25T10:01:00Z"))
+
+    with pytest.raises(sqlite3.IntegrityError):
+        database.save_or_extend_active_alert(
+            alert_data(),
+            [second_event_id, 999_999],
+            evaluated_event_id=second_event_id,
+        )
+
+    after = database.get_alert_with_events(initial.alert_id)
+    assert before is not None
+    assert after is not None
+    assert after["event_count"] == before["event_count"] == 1
+    assert after["window_start"] == before["window_start"]
+    assert after["window_end"] == before["window_end"]
+    assert after["updated_at"] == before["updated_at"]
+    assert [event["id"] for event in after["events"]] == [first_event_id]
+
+
+def test_active_alert_overlap_compares_mixed_utc_offsets_chronologically(
+    database: Database,
+) -> None:
+    first_event_id = database.save_event(event_data("2026-08-25T13:00:00+02:00"))
+    initial_alert = replace(
+        alert_data(),
+        event_count=1,
+        window_start="2026-08-25T13:00:00+02:00",
+        window_end="2026-08-25T13:01:00+02:00",
+    )
+    initial = database.save_or_extend_active_alert(
+        initial_alert,
+        [first_event_id],
+        evaluated_event_id=first_event_id,
+    )
+    second_event_id = database.save_event(event_data("2026-08-25T11:01:00+00:00"))
+    candidate = replace(
+        alert_data(),
+        event_count=1,
+        window_start="2026-08-25T11:01:00+00:00",
+        window_end="2026-08-25T11:01:00+00:00",
+    )
+
+    result = database.save_or_extend_active_alert(
+        candidate,
+        [second_event_id],
+        evaluated_event_id=second_event_id,
+    )
+    stored = database.get_alert_with_events(initial.alert_id)
+
+    assert result.action == AlertMutation.UPDATED
+    assert result.alert_id == initial.alert_id
+    assert stored is not None
+    assert stored["event_count"] == 2
+    assert stored["window_start"] == "2026-08-25T11:00:00+00:00"
+    assert stored["window_end"] == "2026-08-25T11:01:00+00:00"
