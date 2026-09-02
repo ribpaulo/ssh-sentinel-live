@@ -314,10 +314,10 @@ It evaluates all recognized events within one uploaded file.
 
 | Total score | Risk level |
 |---:|---|
-| 0–19 | `LOW` (API value: `NIEDRIG`) |
-| 20–49 | `MEDIUM` (API value: `MITTEL`) |
-| 50–74 | `HIGH` (API value: `HOCH`) |
-| 75–100 | `CRITICAL` (API value: `KRITISCH`) |
+| 0–19 | `LOW` (API value: `LOW`) |
+| 20–49 | `MEDIUM` (API value: `MEDIUM`) |
+| 50–74 | `HIGH` (API value: `HIGH`) |
+| 75–100 | `CRITICAL` (API value: `CRITICAL`) |
 
 The thresholds and points are demonstration heuristics, not an official
 cybersecurity or SIEM standard.
