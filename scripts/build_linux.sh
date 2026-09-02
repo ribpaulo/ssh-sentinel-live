@@ -16,5 +16,5 @@ fi
 "$PYTHON_BIN" -m PyInstaller --clean --noconfirm ssh-sentinel.spec
 
 echo ""
-echo "Linux-Build erstellt: $PROJECT_DIR/dist/ssh-sentinel"
-echo "Start: ./dist/ssh-sentinel"
+echo "Linux build created: $PROJECT_DIR/dist/ssh-sentinel"
+echo "Run: ./dist/ssh-sentinel"

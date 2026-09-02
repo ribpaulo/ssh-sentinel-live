@@ -1,4 +1,4 @@
-"""Anwendungsservice, der Parsing, Erkennung und Scoring verbindet."""
+"""Application service connecting parsing, detection, and scoring."""
 
 from collections import defaultdict
 
@@ -39,7 +39,7 @@ def _entity_summaries(
 
 
 def analyze_log(content: str, filename: str) -> AnalysisResult:
-    """Analysiert einen Logtext und erzeugt ein für HTML und JSON nutzbares Resultat."""
+    """Analyze log text and return a result suitable for HTML and JSON."""
 
     events = parse_ssh_log(content)
     findings = detect_threats(events)
@@ -56,8 +56,8 @@ def analyze_log(content: str, filename: str) -> AnalysisResult:
         for line_number in finding.line_numbers:
             line_reasons[line_number].add(finding.title)
 
-    # Benutzer aus markierten Zeilen werden ebenfalls sichtbar, auch wenn der Fund
-    # ursprünglich auf einer IP-basierten Regel beruht.
+    # Usernames from marked lines remain visible even when the original finding
+    # was produced by an IP-based rule.
     marked_event_lines = {event.line_number: event for event in events if event.line_number in line_reasons}
     for line_number, event in marked_event_lines.items():
         if event.username:

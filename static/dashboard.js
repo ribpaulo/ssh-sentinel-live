@@ -41,10 +41,23 @@ function formatTimestamp(value) {
     if (!value) return "—";
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return String(value);
-    return new Intl.DateTimeFormat("de-CH", {
+    return new Intl.DateTimeFormat("en-GB", {
         dateStyle: "short",
         timeStyle: "medium",
     }).format(parsed);
+}
+
+function formatTimeWindow(start, end) {
+    if (!start && !end) return "—";
+    if (!start) return formatTimestamp(end);
+    if (!end) return formatTimestamp(start);
+    return `${formatTimestamp(start)} – ${formatTimestamp(end)}`;
+}
+
+function appendElementCell(row) {
+    const cell = document.createElement("td");
+    row.append(cell);
+    return cell;
 }
 
 function appendCell(row, value, className = "") {
@@ -63,6 +76,15 @@ function badge(value, kind) {
     return element;
 }
 
+function appendBadgeCell(row, value, kind) {
+    if (value === null || value === undefined || value === "") {
+        return appendCell(row, null);
+    }
+    const cell = appendElementCell(row);
+    cell.append(badge(value, kind));
+    return cell;
+}
+
 function emptyRow(columnCount, message) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
@@ -77,8 +99,7 @@ function renderEvents(events) {
     const rows = events.map((event) => {
         const row = document.createElement("tr");
         appendCell(row, formatTimestamp(event.event_timestamp), "timestamp-cell");
-        const typeCell = appendCell(row, "");
-        typeCell.append(badge(event.event_type, "event"));
+        appendBadgeCell(row, event.event_type, "event");
         appendCell(row, event.hostname);
         appendCell(row, event.ip_address, "mono-cell");
         appendCell(row, event.username);
@@ -86,9 +107,9 @@ function renderEvents(events) {
         appendCell(row, event.source, "source-cell");
         return row;
     });
-    eventsBody.replaceChildren(...(rows.length ? rows : [emptyRow(7, "Noch keine SSH-Events gespeichert.")]));
+    eventsBody.replaceChildren(...(rows.length ? rows : [emptyRow(7, "No SSH events stored yet.")]));
     eventCount.textContent = String(events.length);
-    eventCountBadge.textContent = `${events.length} geladen`;
+    eventCountBadge.textContent = `${events.length} loaded`;
 }
 
 function renderAlerts(alerts) {
@@ -97,31 +118,44 @@ function renderAlerts(alerts) {
         const row = document.createElement("tr");
         appendCell(row, alert.id, "mono-cell");
         appendCell(row, formatTimestamp(alert.created_at), "timestamp-cell");
-        const severityCell = appendCell(row, "");
-        severityCell.append(badge(alert.severity, "severity"));
+        appendBadgeCell(row, alert.severity, "severity");
 
-        const titleCell = appendCell(row, "");
+        const titleCell = appendElementCell(row);
         const detailButton = document.createElement("button");
         detailButton.type = "button";
         detailButton.className = "alert-link";
-        detailButton.textContent = `${displayValue(alert.title)} · ${displayValue(alert.rule_id)}`;
-        detailButton.addEventListener("click", () => showAlertDetails(alert.id));
-        titleCell.append(detailButton);
+        if (alert.title || alert.rule_id) {
+            if (alert.title) {
+                const title = document.createElement("span");
+                title.className = "alert-link-title";
+                title.textContent = String(alert.title);
+                detailButton.append(title);
+            }
+            if (alert.rule_id) {
+                const rule = document.createElement("small");
+                rule.className = "alert-link-rule";
+                rule.textContent = String(alert.rule_id);
+                detailButton.append(rule);
+            }
+            detailButton.addEventListener("click", () => showAlertDetails(alert.id));
+            titleCell.append(detailButton);
+        } else {
+            titleCell.textContent = "—";
+        }
 
         appendCell(row, alert.ip_address, "mono-cell");
         appendCell(row, alert.username);
         appendCell(row, alert.event_count, "mono-cell");
         appendCell(
             row,
-            `${formatTimestamp(alert.window_start)} – ${formatTimestamp(alert.window_end)}`,
+            formatTimeWindow(alert.window_start, alert.window_end),
             "window-cell",
         );
-        const statusCell = appendCell(row, "");
-        statusCell.append(badge(alert.status, "status"));
+        appendBadgeCell(row, alert.status, "status");
         return row;
     });
-    alertsBody.replaceChildren(...(rows.length ? rows : [emptyRow(9, "Noch keine Alarme gespeichert.")]));
-    alertCountBadge.textContent = `${alerts.length} geladen`;
+    alertsBody.replaceChildren(...(rows.length ? rows : [emptyRow(9, "No alerts stored yet.")]));
+    alertCountBadge.textContent = `${alerts.length} loaded`;
     activeAlertCount.textContent = String(
         alerts.filter((alert) => alert.status === "OPEN" || alert.status === "ACKNOWLEDGED").length,
     );
@@ -134,30 +168,36 @@ function setConnectionState(kind, message) {
 
 function renderSystemStatus(status) {
     systemStatusLoaded = true;
-    const stateLabels = {active: "AKTIV", inactive: "INAKTIV", error: "FEHLER"};
+    const stateLabels = {active: "ACTIVE", inactive: "INACTIVE", error: "ERROR"};
     monitoringState.className = `metric-status is-${status.live_ingestion}`;
     monitoringState.textContent = stateLabels[status.live_ingestion] || displayValue(status.live_ingestion);
 
     if (!status.database_ready) {
-        monitoringDetail.textContent = "SQLite-Datenbank ist derzeit nicht erreichbar.";
+        monitoringDetail.textContent = "The SQLite database is currently unavailable.";
     } else if (status.live_ingestion === "active") {
-        monitoringDetail.textContent = `Überwacht: ${displayValue(status.log_file)}`;
+        monitoringDetail.textContent = `Monitoring: ${displayValue(status.log_file)}`;
     } else if (status.live_ingestion === "error") {
-        monitoringDetail.textContent = status.last_error || "Live-Ingestion ist fehlgeschlagen.";
+        monitoringDetail.textContent = status.last_error || "Live ingestion has failed.";
     } else {
-        monitoringDetail.textContent = "App läuft ohne integrierte Live-Ingestion.";
+        monitoringDetail.textContent = "The app is running without integrated live ingestion.";
     }
 
-    const eventLabel = status.last_event_id === null ? "—" : `#${status.last_event_id}`;
-    monitoringLastEvent.textContent = `Letztes gespeichertes Event: ${eventLabel} · ${formatTimestamp(status.last_event_at)}`;
+    if (status.last_event_id === null && !status.last_event_at) {
+        monitoringLastEvent.textContent = "Last stored event: —";
+    } else {
+        const eventParts = [];
+        if (status.last_event_id !== null) eventParts.push(`#${status.last_event_id}`);
+        if (status.last_event_at) eventParts.push(formatTimestamp(status.last_event_at));
+        monitoringLastEvent.textContent = `Last stored event: ${eventParts.join(" · ")}`;
+    }
 }
 
 function reportSystemStatusError(error) {
     if (!systemStatusLoaded) {
         monitoringState.className = "metric-status is-error";
-        monitoringState.textContent = "UNBEKANNT";
+        monitoringState.textContent = "UNKNOWN";
     }
-    monitoringDetail.textContent = `Betriebsstatus vorübergehend nicht erreichbar: ${error.message}`;
+    monitoringDetail.textContent = `System status temporarily unavailable: ${error.message}`;
 }
 
 async function requestJson(url, options = {}) {
@@ -172,7 +212,7 @@ async function requestJson(url, options = {}) {
             const payload = await response.json();
             if (typeof payload.detail === "string") message = payload.detail;
         } catch {
-            // Die HTTP-Statusmeldung bleibt als sichere Fallback-Ausgabe erhalten.
+            // Keep the HTTP status message as a safe fallback.
         }
         throw new Error(message);
     }
@@ -207,10 +247,10 @@ function renderAlertDetails(alert) {
     addMetadata("Status", alert.status);
     addMetadata("Severity", alert.severity);
     addMetadata("Score", `${alert.score} / 100`);
-    addMetadata("IP-Adresse", alert.ip_address);
-    addMetadata("Benutzer", alert.username);
-    addMetadata("Zeitfenster", `${formatTimestamp(alert.window_start)} – ${formatTimestamp(alert.window_end)}`);
-    addMetadata("Aktualisiert", formatTimestamp(alert.updated_at));
+    addMetadata("IP address", alert.ip_address);
+    addMetadata("Username", alert.username);
+    addMetadata("Time window", formatTimeWindow(alert.window_start, alert.window_end));
+    addMetadata("Updated", formatTimestamp(alert.updated_at));
 
     alertStatus.value = alert.status;
     alertNote.value = alert.note ?? "";
@@ -226,13 +266,13 @@ function renderAlertDetails(alert) {
         appendCell(row, event.auth_method);
         return row;
     });
-    alertEventsBody.replaceChildren(...(rows.length ? rows : [emptyRow(6, "Keine Events verknüpft.")]));
+    alertEventsBody.replaceChildren(...(rows.length ? rows : [emptyRow(6, "No linked events.")]));
 }
 
 async function showAlertDetails(alertId) {
     currentAlert = null;
-    alertDialogTitle.textContent = `Alarm #${alertId}`;
-    alertDescription.textContent = "Details werden geladen …";
+    alertDialogTitle.textContent = `Alert #${alertId}`;
+    alertDescription.textContent = "Loading details …";
     alertMetadata.replaceChildren();
     alertEventsBody.replaceChildren();
     alertStatus.value = "OPEN";
@@ -245,7 +285,7 @@ async function showAlertDetails(alertId) {
         const alert = await requestJson(`/api/alerts/${alertId}`);
         renderAlertDetails(alert);
     } catch (error) {
-        alertDescription.textContent = `Alarmdetails konnten nicht geladen werden (${error.message}).`;
+        alertDescription.textContent = `Alert details could not be loaded (${error.message}).`;
     }
 }
 
@@ -267,7 +307,7 @@ async function saveAlertChanges(event) {
 
     saveInProgress = true;
     setEditorDisabled(true);
-    setSaveMessage("", "Änderungen werden gespeichert …");
+    setSaveMessage("", "Saving changes …");
     try {
         const updatedAlert = await requestJson(`/api/alerts/${currentAlert.id}`, {
             method: "PATCH",
@@ -278,10 +318,10 @@ async function saveAlertChanges(event) {
         if (refreshInProgress) refreshRequested = true;
         renderAlertDetails(updatedAlert);
         updateRenderedAlert(updatedAlert);
-        setSaveMessage("success", "Status und Notiz wurden gespeichert.");
+        setSaveMessage("success", "Status and note saved.");
     } catch (error) {
         setEditorDisabled(false);
-        setSaveMessage("error", `Speichern fehlgeschlagen: ${error.message}`);
+        setSaveMessage("error", `Save failed: ${error.message}`);
     } finally {
         saveInProgress = false;
     }
@@ -311,7 +351,7 @@ async function refreshDashboard() {
     refreshInProgress = true;
     const requestedAlertUrl = alertListUrl();
     const requestedAlertRevision = alertDataRevision;
-    setConnectionState("loading", "Daten werden aktualisiert");
+    setConnectionState("loading", "Updating data");
     const statusRequest = requestJson("/api/system/status")
         .then(renderSystemStatus)
         .catch(reportSystemStatusError);
@@ -330,9 +370,9 @@ async function refreshDashboard() {
             refreshRequested = true;
         }
         lastUpdated.textContent = formatTimestamp(new Date().toISOString());
-        setConnectionState("ok", "Verbunden · Daten aktuell");
+        setConnectionState("ok", "Connected · data current");
     } catch (error) {
-        setConnectionState("error", `Aktualisierung fehlgeschlagen · ${error.message}`);
+        setConnectionState("error", `Update failed · ${error.message}`);
     } finally {
         await statusRequest;
         refreshInProgress = false;

@@ -1,4 +1,4 @@
-"""Pydantic-Modelle für Parser-, Detektor- und API-Ergebnisse."""
+"""Pydantic models for parser, detector, and API results."""
 
 from enum import Enum
 
@@ -6,14 +6,14 @@ from pydantic import BaseModel, Field
 
 
 class EventType(str, Enum):
-    """Unterstützte Arten von SSH-Authentifizierungsereignissen."""
+    """Supported SSH authentication event types."""
 
     FAILED_LOGIN = "failed_login"
     SUCCESSFUL_LOGIN = "successful_login"
 
 
 class SSHEvent(BaseModel):
-    """Ein aus einer Logzeile extrahiertes SSH-Ereignis."""
+    """An SSH event extracted from a log line."""
 
     line_number: int
     raw_line: str
@@ -26,7 +26,7 @@ class SSHEvent(BaseModel):
 
 
 class DetectionFinding(BaseModel):
-    """Ein einzelner, durch eine Regel ausgelöster Fund."""
+    """A single finding triggered by a rule."""
 
     rule_id: str
     title: str
@@ -39,7 +39,7 @@ class DetectionFinding(BaseModel):
 
 
 class EntitySummary(BaseModel):
-    """Zusammenfassung der Aktivität einer IP-Adresse oder eines Benutzers."""
+    """Summary of activity for an IP address or username."""
 
     value: str
     attempts: int
@@ -49,7 +49,7 @@ class EntitySummary(BaseModel):
 
 
 class MarkedLogLine(BaseModel):
-    """Originalzeile mit den Gründen für ihre Markierung."""
+    """Original line with the reasons why it was marked."""
 
     line_number: int
     content: str
@@ -57,7 +57,7 @@ class MarkedLogLine(BaseModel):
 
 
 class RiskBreakdown(BaseModel):
-    """Punkteanteil pro ausgelöster Erkennungsregel."""
+    """Point contribution for one triggered detection rule."""
 
     rule_id: str
     label: str
@@ -65,7 +65,7 @@ class RiskBreakdown(BaseModel):
 
 
 class AnalysisResult(BaseModel):
-    """Vollständiges Resultat einer Logdatei-Analyse."""
+    """Complete result of a log file analysis."""
 
     filename: str
     total_lines: int

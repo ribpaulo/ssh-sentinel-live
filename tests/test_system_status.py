@@ -90,7 +90,7 @@ def test_background_error_is_visible_without_message_or_stacktrace(tmp_path: Pat
 
     assert not worker.is_alive
     assert payload["live_ingestion"] == "error"
-    assert payload["last_error"] == "Live-Ingestion fehlgeschlagen (RuntimeError)."
+    assert payload["last_error"] == "Live ingestion failed (RuntimeError)."
     assert "secret detail" not in response.text
     assert "Traceback" not in response.text
 

@@ -6,7 +6,7 @@ from main import app
 
 
 async def _request(method: str, url: str, **kwargs: object) -> httpx.Response:
-    """Sendet Testanfragen direkt an die ASGI-App, ohne einen Netzwerkserver."""
+    """Send test requests directly to the ASGI app without a network server."""
 
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
@@ -17,7 +17,8 @@ def test_start_page_is_available() -> None:
     response = asyncio.run(_request("GET", "/"))
 
     assert response.status_code == 200
-    assert "SSH-Logdatei hochladen" in response.text
+    assert '<html lang="en">' in response.text
+    assert "Upload SSH log file" in response.text
 
 
 def test_json_analysis_endpoint() -> None:
@@ -44,8 +45,10 @@ def test_html_analysis_page_contains_result() -> None:
     ))
 
     assert response.status_code == 200
-    assert "Analyse abgeschlossen" in response.text
+    assert "Analysis complete" in response.text
     assert "demo.log" in response.text
+    assert "LOW" in response.text
+    assert "NIEDRIG" not in response.text
 
 
 def test_rejects_wrong_file_extension() -> None:

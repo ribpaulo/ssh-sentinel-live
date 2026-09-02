@@ -3,7 +3,7 @@
 set -eu
 
 if [ "$#" -ne 1 ]; then
-    echo "Verwendung: $0 /pfad/zur/demo-auth.log" >&2
+    echo "Usage: $0 /path/to/demo-auth.log" >&2
     exit 2
 fi
 
@@ -20,4 +20,4 @@ for username in $users; do
     port=$((port + 1))
 done
 
-echo "6 synthetische SSH-Fehlversuche wurden an $demo_log angehängt."
+echo "Appended 6 synthetic SSH login failures to $demo_log."

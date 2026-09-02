@@ -1,4 +1,4 @@
-"""Einstiegspunkt der FastAPI-Anwendung."""
+"""FastAPI application entry point."""
 
 import os
 from pathlib import Path
@@ -20,7 +20,7 @@ def create_app(
     *,
     system_status: LiveSystemStatus | None = None,
 ) -> FastAPI:
-    """Erstellt die Anwendung mit einer konfigurierbaren SQLite-Datenbank."""
+    """Create the application with a configurable SQLite database."""
 
     configured_path = database_path or os.environ.get(DATABASE_PATH_ENV) or DEFAULT_DATABASE_PATH
     database = Database(configured_path)
@@ -28,7 +28,7 @@ def create_app(
 
     application = FastAPI(
         title="SSH Sentinel Mini-SIEM",
-        description="Demo-Analyse von SSH-Authentifizierungslogs für eine Modularbeit.",
+        description="Demo analysis of SSH authentication logs for an educational project.",
         version="1.0.0",
     )
     application.state.database = database

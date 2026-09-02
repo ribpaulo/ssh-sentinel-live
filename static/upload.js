@@ -11,16 +11,16 @@ function showFile(file, assignToInput = false) {
     const extension = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
     if (!allowedExtensions.includes(extension)) {
         fileInput.value = "";
-        fileInput.setCustomValidity("Erlaubt sind nur .log- und .txt-Dateien.");
-        fileStatus.textContent = "Nicht unterstützt: Bitte .log oder .txt verwenden.";
+        fileInput.setCustomValidity("Only .log and .txt files are allowed.");
+        fileStatus.textContent = "Unsupported file: use .log or .txt.";
         dropzone.classList.add("is-error");
         return;
     }
 
     if (file.size > maximumSize) {
         fileInput.value = "";
-        fileInput.setCustomValidity("Die Datei darf maximal 2 MB gross sein.");
-        fileStatus.textContent = "Datei zu gross: maximal 2 MB erlaubt.";
+        fileInput.setCustomValidity("The file must not exceed 2 MB.");
+        fileStatus.textContent = "File too large: maximum 2 MB.";
         dropzone.classList.add("is-error");
         return;
     }
@@ -64,8 +64,8 @@ dropzone.addEventListener("drop", (event) => {
 
     if (event.dataTransfer.files.length !== 1) {
         fileInput.value = "";
-        fileInput.setCustomValidity("Bitte genau eine Datei ablegen.");
-        fileStatus.textContent = "Bitte genau eine Datei ablegen.";
+        fileInput.setCustomValidity("Please drop exactly one file.");
+        fileStatus.textContent = "Please drop exactly one file.";
         dropzone.classList.remove("has-file");
         dropzone.classList.add("is-error");
         return;

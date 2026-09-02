@@ -28,4 +28,4 @@ def test_launcher_reports_an_occupied_port(monkeypatch, capsys) -> None:
     exit_code = launcher.run(["--port", "8000", "--no-browser"])
 
     assert exit_code == 1
-    assert "bereits belegt" in capsys.readouterr().err
+    assert "already in use" in capsys.readouterr().err

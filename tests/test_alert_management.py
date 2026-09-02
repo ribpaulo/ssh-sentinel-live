@@ -270,7 +270,7 @@ def test_database_errors_return_generic_message(
     )
 
     assert response.status_code == 500
-    assert response.json() == {"detail": "Alarm konnte nicht gespeichert werden."}
+    assert response.json() == {"detail": "Alert could not be saved."}
     assert "sensitive" not in response.text
 
 

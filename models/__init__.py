@@ -1,4 +1,4 @@
-"""Datenmodelle der Mini-SIEM-Anwendung."""
+"""Data models for the Mini-SIEM application."""
 
 from .analysis import (
     AnalysisResult,

@@ -1,4 +1,4 @@
-"""Zeitbasierte Detection Rule für SSH-Brute-Force-Aktivität."""
+"""Time-based detection rule for SSH brute-force activity."""
 
 from __future__ import annotations
 

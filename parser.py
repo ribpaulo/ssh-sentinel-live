@@ -1,4 +1,4 @@
-"""Parser für gebräuchliche OpenSSH-Einträge aus ``auth.log``-Dateien."""
+"""Parser for common OpenSSH entries from ``auth.log`` files."""
 
 import ipaddress
 import re
@@ -6,8 +6,8 @@ import re
 from models.analysis import EventType, SSHEvent
 
 
-# Syslog- und ISO-Zeitstempel werden unterstützt. Der Nachrichtenteil wird danach
-# separat ausgewertet, damit weitere SSH-Muster leicht ergänzt werden können.
+# Syslog and ISO timestamps are supported. The message section is evaluated
+# separately so that additional SSH patterns can be added easily.
 LOG_PREFIX = re.compile(
     r"^(?P<timestamp>(?:[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}|"
     r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?))"
@@ -36,7 +36,7 @@ PAM_FAILURE = re.compile(
 
 
 def _valid_ip(value: str) -> str | None:
-    """Gibt eine normalisierte IP-Adresse zurück oder ``None`` bei ungültigem Text."""
+    """Return a normalized IP address, or ``None`` for invalid text."""
 
     try:
         return str(ipaddress.ip_address(value.strip("[]")))
@@ -45,7 +45,7 @@ def _valid_ip(value: str) -> str | None:
 
 
 def parse_line(line: str, line_number: int) -> SSHEvent | None:
-    """Parst eine Logzeile; nicht unterstützte Zeilen werden ignoriert."""
+    """Parse one log line; unsupported lines are ignored."""
 
     raw_line = line.rstrip("\r\n")
     prefix = LOG_PREFIX.match(raw_line)
@@ -85,7 +85,7 @@ def parse_line(line: str, line_number: int) -> SSHEvent | None:
 
 
 def parse_ssh_log(content: str) -> list[SSHEvent]:
-    """Parst alle erkannten SSH-Authentifizierungsereignisse eines Textes."""
+    """Parse all recognized SSH authentication events from text."""
 
     events: list[SSHEvent] = []
     for line_number, line in enumerate(content.splitlines(), start=1):

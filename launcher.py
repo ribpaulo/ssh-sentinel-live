@@ -1,7 +1,7 @@
-"""Plattformübergreifender Starter für die gepackte Mini-SIEM-Anwendung.
+"""Cross-platform launcher for the packaged Mini-SIEM application.
 
-Der Launcher startet FastAPI ausschliesslich auf dem lokalen Rechner und öffnet
-die Weboberfläche, sobald der Health-Check des Servers erreichbar ist.
+The launcher starts FastAPI on the local machine only and opens the web
+interface as soon as the server health check becomes available.
 """
 
 import argparse
@@ -26,27 +26,27 @@ STARTUP_TIMEOUT_SECONDS = 15.0
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
-    """Erstellt die Kommandozeilenoptionen des Launchers."""
+    """Create the launcher's command-line options."""
 
     parser = argparse.ArgumentParser(
-        description="Startet SSH Sentinel als lokale Webanwendung.",
+        description="Start SSH Sentinel as a local web application.",
     )
     parser.add_argument(
         "--port",
         type=int,
         default=DEFAULT_PORT,
-        help=f"Lokaler HTTP-Port (Standard: {DEFAULT_PORT}).",
+        help=f"Local HTTP port (default: {DEFAULT_PORT}).",
     )
     parser.add_argument(
         "--no-browser",
         action="store_true",
-        help="Browser nach dem Start nicht automatisch öffnen.",
+        help="Do not open a browser automatically after startup.",
     )
     return parser
 
 
 def port_is_available(host: str, port: int) -> bool:
-    """Prüft, ob der gewünschte lokale TCP-Port gebunden werden kann."""
+    """Check whether the requested local TCP port can be bound."""
 
     if not 1 <= port <= 65535:
         return False
@@ -61,7 +61,7 @@ def port_is_available(host: str, port: int) -> bool:
 
 
 def wait_for_server_and_open(url: str, timeout: float = STARTUP_TIMEOUT_SECONDS) -> None:
-    """Wartet auf den Health-Check und öffnet anschliessend die Startseite."""
+    """Wait for the health check and then open the home page."""
 
     health_url = f"{url}/api/health"
     deadline = time.monotonic() + timeout
@@ -76,24 +76,24 @@ def wait_for_server_and_open(url: str, timeout: float = STARTUP_TIMEOUT_SECONDS)
             time.sleep(0.2)
 
     print(
-        f"Hinweis: Der Browser konnte nicht automatisch geöffnet werden. Öffne {url} manuell.",
+        f"Note: the browser could not be opened automatically. Open {url} manually.",
         file=sys.stderr,
     )
 
 
 def run(argv: Sequence[str] | None = None) -> int:
-    """Validiert die Optionen und startet den lokalen Uvicorn-Server."""
+    """Validate options and start the local Uvicorn server."""
 
     args = build_argument_parser().parse_args(argv)
     if not 1 <= args.port <= 65535:
-        print("Fehler: Der Port muss zwischen 1 und 65535 liegen.", file=sys.stderr)
+        print("Error: the port must be between 1 and 65535.", file=sys.stderr)
         return 2
 
     if not port_is_available(DEFAULT_HOST, args.port):
         alternative_port = args.port + 1 if args.port < 65535 else DEFAULT_PORT
         print(
-            f"Fehler: Port {args.port} ist bereits belegt. "
-            f"Starte die App zum Beispiel mit --port {alternative_port}.",
+            f"Error: port {args.port} is already in use. "
+            f"For example, start the app with --port {alternative_port}.",
             file=sys.stderr,
         )
         return 1
@@ -107,19 +107,19 @@ def run(argv: Sequence[str] | None = None) -> int:
             name="browser-opener",
         ).start()
 
-    print(f"SSH Sentinel läuft unter {url}")
-    print("Zum Beenden Ctrl+C drücken oder dieses Fenster schliessen.")
+    print(f"SSH Sentinel is running at {url}")
+    print("Press Ctrl+C or close this window to stop.")
 
-    # Explizite Implementierungen vermeiden dynamische Auto-Auswahl und machen
-    # den PyInstaller-Build auf Linux und Windows reproduzierbarer.
+    # Explicit implementations avoid dynamic auto-selection and make the
+    # PyInstaller build more reproducible on Linux and Windows.
     uvicorn.run(
         app,
         host=DEFAULT_HOST,
         port=args.port,
         loop="asyncio",
         http="h11",
-        # Die App definiert keine Startup-/Shutdown-Hooks. Ohne Lifespan bleibt
-        # auch das Beenden des gepackten Programms per Ctrl+C frei von Warnungen.
+        # The app defines no startup or shutdown hooks. Disabling lifespan also
+        # keeps Ctrl+C shutdown of the packaged program free of warnings.
         lifespan="off",
         reload=False,
         workers=1,
@@ -128,7 +128,7 @@ def run(argv: Sequence[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    # Unter Windows benötigt ein eingefrorenes Programm diesen Aufruf für Module,
-    # die intern Multiprocessing-Unterstützung verwenden könnten.
+    # On Windows, a frozen executable needs this call for modules that may use
+    # multiprocessing support internally.
     multiprocessing.freeze_support()
     raise SystemExit(run())

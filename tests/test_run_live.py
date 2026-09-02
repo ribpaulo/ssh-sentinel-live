@@ -191,7 +191,7 @@ def test_occupied_port_is_reported_before_ingestion_starts(
     result = run_live.run(["--log-file", str(args.log_file)])
 
     assert result == 1
-    assert "nicht verfügbar" in capsys.readouterr().err
+    assert "unavailable" in capsys.readouterr().err
     assert all(thread.name != run_live.THREAD_NAME for thread in threading.enumerate())
 
 
@@ -229,4 +229,4 @@ def test_worker_records_successful_event() -> None:
     assert snapshot.last_event_id == 42
     assert snapshot.last_event_at is not None
     assert snapshot.live_ingestion == LiveIngestionState.ERROR
-    assert snapshot.last_error == "Live-Ingestion fehlgeschlagen (RuntimeError)."
+    assert snapshot.last_error == "Live ingestion failed (RuntimeError)."
