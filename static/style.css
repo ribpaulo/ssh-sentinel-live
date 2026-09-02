@@ -120,11 +120,17 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .connection-status.is-ok { color: var(--accent); border-color: rgba(92,242,175,.35); }
 .connection-status.is-loading { color: var(--warning); }
 .connection-status.is-error { color: #ffc0c0; border-color: rgba(255,104,104,.45); }
-.dashboard-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+.dashboard-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
 .dashboard-metrics article { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); padding: 19px; display: flex; flex-direction: column; min-width: 0; }
 .dashboard-metrics span, .dashboard-metrics small { color: var(--muted); font-size: 12px; }
 .dashboard-metrics strong { font: 700 29px/1.3 ui-monospace, monospace; margin: 8px 0 4px; }
 .dashboard-metrics .metric-time { font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; }
+.dashboard-metrics .metric-status { font-size: 19px; }
+.metric-status.is-active { color: var(--accent); }
+.metric-status.is-inactive { color: var(--muted); }
+.metric-status.is-error { color: var(--danger); }
+#monitoring-detail, #monitoring-last-event { overflow-wrap: anywhere; }
+#monitoring-last-event { margin-top: 5px; }
 .dashboard-panel { padding-bottom: 24px; }
 .alert-list-controls { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
 .alert-list-controls label { color: var(--muted); font-size: 12px; font-weight: 700; }

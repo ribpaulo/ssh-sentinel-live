@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from database import AlertStatus
 from models.analysis import EventType
+from runtime_status import LiveIngestionState
 
 
 class DashboardEvent(BaseModel):
@@ -52,3 +53,13 @@ class DashboardAlertUpdate(BaseModel):
             return None
         stripped = value.strip()
         return stripped or None
+
+
+class SystemStatusResponse(BaseModel):
+    database_ready: bool
+    live_ingestion: LiveIngestionState
+    log_file: str | None
+    started_at: str
+    last_event_id: int | None
+    last_event_at: str | None
+    last_error: str | None

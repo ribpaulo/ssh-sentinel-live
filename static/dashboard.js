@@ -4,6 +4,9 @@ const connectionStatus = document.querySelector("#connection-status");
 const eventCount = document.querySelector("#event-count");
 const activeAlertCount = document.querySelector("#active-alert-count");
 const lastUpdated = document.querySelector("#last-updated");
+const monitoringState = document.querySelector("#monitoring-state");
+const monitoringDetail = document.querySelector("#monitoring-detail");
+const monitoringLastEvent = document.querySelector("#monitoring-last-event");
 const eventCountBadge = document.querySelector("#event-count-badge");
 const alertCountBadge = document.querySelector("#alert-count-badge");
 const alertStatusFilter = document.querySelector("#alert-status-filter");
@@ -28,6 +31,7 @@ let saveInProgress = false;
 let loadedAlerts = [];
 let currentAlert = null;
 let alertDataRevision = 0;
+let systemStatusLoaded = false;
 
 function displayValue(value) {
     return value === null || value === undefined || value === "" ? "—" : String(value);
@@ -126,6 +130,34 @@ function renderAlerts(alerts) {
 function setConnectionState(kind, message) {
     connectionStatus.className = `connection-status is-${kind}`;
     connectionStatus.querySelector("strong").textContent = message;
+}
+
+function renderSystemStatus(status) {
+    systemStatusLoaded = true;
+    const stateLabels = {active: "AKTIV", inactive: "INAKTIV", error: "FEHLER"};
+    monitoringState.className = `metric-status is-${status.live_ingestion}`;
+    monitoringState.textContent = stateLabels[status.live_ingestion] || displayValue(status.live_ingestion);
+
+    if (!status.database_ready) {
+        monitoringDetail.textContent = "SQLite-Datenbank ist derzeit nicht erreichbar.";
+    } else if (status.live_ingestion === "active") {
+        monitoringDetail.textContent = `Überwacht: ${displayValue(status.log_file)}`;
+    } else if (status.live_ingestion === "error") {
+        monitoringDetail.textContent = status.last_error || "Live-Ingestion ist fehlgeschlagen.";
+    } else {
+        monitoringDetail.textContent = "App läuft ohne integrierte Live-Ingestion.";
+    }
+
+    const eventLabel = status.last_event_id === null ? "—" : `#${status.last_event_id}`;
+    monitoringLastEvent.textContent = `Letztes gespeichertes Event: ${eventLabel} · ${formatTimestamp(status.last_event_at)}`;
+}
+
+function reportSystemStatusError(error) {
+    if (!systemStatusLoaded) {
+        monitoringState.className = "metric-status is-error";
+        monitoringState.textContent = "UNBEKANNT";
+    }
+    monitoringDetail.textContent = `Betriebsstatus vorübergehend nicht erreichbar: ${error.message}`;
 }
 
 async function requestJson(url, options = {}) {
@@ -280,6 +312,9 @@ async function refreshDashboard() {
     const requestedAlertUrl = alertListUrl();
     const requestedAlertRevision = alertDataRevision;
     setConnectionState("loading", "Daten werden aktualisiert");
+    const statusRequest = requestJson("/api/system/status")
+        .then(renderSystemStatus)
+        .catch(reportSystemStatusError);
     try {
         const [events, alerts] = await Promise.all([
             requestJson("/api/events?limit=50"),
@@ -299,6 +334,7 @@ async function refreshDashboard() {
     } catch (error) {
         setConnectionState("error", `Aktualisierung fehlgeschlagen · ${error.message}`);
     } finally {
+        await statusRequest;
         refreshInProgress = false;
         if (refreshRequested && !document.hidden) {
             refreshRequested = false;

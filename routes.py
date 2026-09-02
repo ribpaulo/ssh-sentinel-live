@@ -24,6 +24,7 @@ from models.dashboard import (
     DashboardAlertDetail,
     DashboardAlertUpdate,
     DashboardEvent,
+    SystemStatusResponse,
 )
 from service import analyze_log
 
@@ -162,6 +163,36 @@ async def health() -> dict[str, str]:
     """Einfacher Health-Check für Entwicklung und Deployment."""
 
     return {"status": "ok"}
+
+
+@router.get("/api/system/status", response_model=SystemStatusResponse)
+async def system_status(request: Request) -> dict[str, object]:
+    """Liefert den knappen Betriebsstatus ohne interne Fehlerdetails."""
+
+    database: Database = request.app.state.database
+    latest_event = None
+    try:
+        latest_event = database.get_last_ingested_event()
+        database_ready = True
+    except sqlite3.Error:
+        database_ready = False
+
+    snapshot = request.app.state.system_status.snapshot()
+    last_event_id = snapshot.last_event_id
+    last_event_at = snapshot.last_event_at
+    if last_event_id is None and latest_event is not None:
+        last_event_id = latest_event["id"]
+        last_event_at = latest_event["ingested_at"]
+
+    return {
+        "database_ready": database_ready,
+        "live_ingestion": snapshot.live_ingestion,
+        "log_file": snapshot.log_file,
+        "started_at": snapshot.started_at,
+        "last_event_id": last_event_id,
+        "last_event_at": last_event_at,
+        "last_error": snapshot.last_error,
+    }
 
 
 @router.get("/api/events", response_model=list[DashboardEvent])
