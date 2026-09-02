@@ -1,6 +1,6 @@
 # SSH Sentinel – Mini-SIEM für SSH-Logs
 
-SSH Sentinel ist eine kleine FastAPI-Webanwendung für eine Cyber-Security-Modularbeit. Sie liest typische OpenSSH-Einträge aus `auth.log`, erkennt einfache verdächtige Muster und zeigt das Ergebnis als übersichtliche HTML-Seite oder als JSON an.
+SSH Sentinel ist eine kleine FastAPI-Webanwendung für eine Cyber-Security-Modularbeit. Sie analysiert hochgeladene OpenSSH-Logs oder überwacht eine lokale Logdatei fortlaufend. Erkannte Events und zeitbasierte Brute-Force-Alarme werden lokal in SQLite gespeichert und im Dashboard angezeigt.
 
 > Die Anwendung ist eine nachvollziehbare Demo-Analyse. Sie ersetzt weder ein produktives SIEM noch Intrusion-Detection- oder andere Sicherheitswerkzeuge.
 
@@ -13,6 +13,10 @@ SSH Sentinel ist eine kleine FastAPI-Webanwendung für eine Cyber-Security-Modul
 - Risiko-Score von 0 bis 100 mit detaillierter Punkteaufschlüsselung
 - markierte Originalzeilen inklusive Markierungsgrund
 - HTML-Oberfläche und JSON-API mit derselben Analyse-Logik
+- polling-basierte Live-Ingestion mit Rotation- und Truncation-Erkennung
+- persistente Events, Brute-Force-Alarme, Status und Untersuchungsnotizen
+- Live-Dashboard mit Betriebsstatus und Aktualisierung im Vier-Sekunden-Takt
+- einheitlicher Start von Webanwendung und Logüberwachung
 - Beispieldateien und automatisierte Tests
 - eigenständiger PyInstaller-Build für Linux und Windows
 - lokaler Launcher mit automatischem Browserstart und Portprüfung
@@ -20,8 +24,8 @@ SSH Sentinel ist eine kleine FastAPI-Webanwendung für eine Cyber-Security-Modul
 ## Schnellstart unter Linux
 
 ```bash
-git clone https://github.com/ribpaulo/mini-siem-web-app.git
-cd mini-siem-web-app
+git clone https://github.com/ribpaulo/ssh-sentinel-live.git
+cd ssh-sentinel-live
 
 python3 -m venv .venv
 source .venv/bin/activate
@@ -36,9 +40,16 @@ Anschliessend ist SSH Sentinel unter `http://127.0.0.1:8000` erreichbar.
 ## Projektstruktur
 
 ```text
-mini-siem-web-app/
+ssh-sentinel-live/
 ├── main.py                     # Einstiegspunkt und FastAPI-Konfiguration
-├── launcher.py                 # Startet den lokalen Server und Browser
+├── launcher.py                 # Startet den bisherigen lokalen Upload-/Dashboard-Modus
+├── run_live.py                 # Einheitlicher Start von Webserver und Live-Ingestion
+├── live_ingest.py              # Separater Kommandozeilenstart der Live-Ingestion
+├── live_ingestion.py           # Parser-Anbindung und persistente Event-Ingestion
+├── file_tailer.py              # Polling-Tailer für Append, Truncation und Rotation
+├── brute_force_detection.py    # Zeitbasierte Live-Detection
+├── database.py                 # SQLite-Schema und parametrisierte Datenzugriffe
+├── runtime_status.py           # Thread-sicherer Status des integrierten Live-Betriebs
 ├── routes.py                   # HTML-Routen, JSON-API und Upload-Validierung
 ├── service.py                  # Verbindet Parser, Detektor und Scoring
 ├── parser.py                   # Wandelt SSH-Logzeilen in strukturierte Events um
@@ -48,16 +59,19 @@ mini-siem-web-app/
 │
 ├── models/
 │   ├── __init__.py             # Exportiert die verwendeten Datenmodelle
-│   └── analysis.py             # Pydantic-Modelle für Events und Ergebnisse
+│   ├── analysis.py             # Pydantic-Modelle für Upload-Analyse
+│   └── dashboard.py            # Pydantic-Modelle der Dashboard-API
 │
 ├── templates/
 │   ├── base.html               # Gemeinsames HTML-Grundgerüst
 │   ├── index.html              # Startseite mit Datei-Upload
-│   └── result.html             # Darstellung des Analyseergebnisses
+│   ├── result.html             # Darstellung des Analyseergebnisses
+│   └── dashboard.html          # Events, Alarme und Betriebsstatus
 │
 ├── static/
 │   ├── style.css               # Responsives Design der Weboberfläche
-│   └── upload.js               # Drag-and-drop und Browser-Validierung
+│   ├── upload.js               # Drag-and-drop und Browser-Validierung
+│   └── dashboard.js            # Sicheres Polling und Alarmverwaltung
 │
 ├── examples/
 │   ├── auth_good.log           # Beispiel ohne auffälliges Angriffsmuster
@@ -72,14 +86,15 @@ mini-siem-web-app/
 │
 ├── scripts/
 │   ├── build_linux.sh          # Erstellt das Linux-Executable
-│   └── build_windows.ps1       # Erstellt die Windows-EXE
+│   ├── build_windows.ps1       # Erstellt die Windows-EXE
+│   └── demo_brute_force.sh     # Hängt synthetische Demo-Events an
 │
 ├── requirements.txt            # Python-Abhängigkeiten mit festen Versionen
 ├── README.md                   # Installation, Nutzung und Dokumentation
 └── .gitignore                  # Von Git ausgeschlossene lokale Dateien
 ```
 
-### Verarbeitungskette
+### Architektur und Datenfluss
 
 Die Verantwortlichkeiten sind bewusst getrennt. Eine hochgeladene Datei durchläuft die Anwendung in folgender Reihenfolge:
 
@@ -101,6 +116,19 @@ AnalysisResult
         │
         ├── result.html    Ausgabe als Ergebnisseite
         └── FastAPI       Ausgabe als JSON
+```
+
+Im Live-Betrieb ist die Verarbeitungskette ebenfalls bewusst linear:
+
+```text
+Logdatei
+  → File-Tailer
+  → bestehender Parser
+  → SQLite Events
+  → Brute-Force-Detection
+  → SQLite Alerts
+  → FastAPI
+  → Dashboard und Alarmverwaltung
 ```
 
 ## Entwicklungsumgebung einrichten
@@ -126,7 +154,7 @@ python -m pip install -r requirements.txt
 
 Die Änderung der Execution Policy gilt nur für die aktuelle PowerShell-Sitzung und wird nach dem Schliessen des Fensters nicht dauerhaft übernommen.
 
-## Anwendung während der Entwicklung starten
+## Manueller Upload-Modus
 
 Mit automatischem Browserstart:
 
@@ -152,10 +180,43 @@ python launcher.py --help
 
 Die Anwendung wird absichtlich nur an `127.0.0.1` gebunden und ist damit standardmässig nicht aus dem Netzwerk erreichbar. Falls Port 8000 bereits belegt ist, beendet sich der Launcher mit einer verständlichen Meldung und schlägt einen anderen Port vor.
 
+## Empfohlener einheitlicher Live-Betrieb
+
+Für Demonstration und lokalen Betrieb startet ein Befehl Dashboard und
+Live-Ingestion mit garantiert derselben SQLite-Datenbank:
+
+```bash
+python run_live.py --log-file /var/log/auth.log
+```
+
+Standardmässig bindet der Server an `127.0.0.1:8000`, liest ab dem aktuellen
+Dateiende, pollt alle 0,5 Sekunden und verwendet `data/ssh_sentinel.db`. Der
+vollständige Aufruf ist beispielsweise:
+
+```bash
+python run_live.py \
+  --log-file /tmp/ssh-sentinel-demo.log \
+  --database data/ssh_sentinel.db \
+  --host 127.0.0.1 \
+  --port 8000 \
+  --poll-interval 0.5 \
+  --brute-force-threshold 5 \
+  --brute-force-window 60 \
+  --from-start
+```
+
+`--poll-interval` und `--brute-force-window` müssen positiv und endlich sein,
+der Schwellenwert mindestens 2 und der Port zwischen 1 und 65535 liegen. Die
+Logdatei muss beim Start als reguläre, lesbare Datei existieren. `Ctrl+C`
+beendet Webserver und Tailer kontrolliert. Der integrierte Start verwendet
+absichtlich weder Auto-Reload noch mehrere Worker. `--reload` darf nicht mit
+einem eingebetteten Watcher kombiniert werden, weil der Entwicklungsserver
+zusätzliche Prozesse und damit eine doppelte Ingestion starten kann.
+
 ## Lokale Logdatei fortlaufend einlesen
 
-Die Live-Ingestion läuft bewusst als separater Prozess und verändert den
-bestehenden Upload-Ablauf nicht:
+Der bisherige separate Modus bleibt für Betriebskonzepte erhalten, bei denen
+Webserver und Ingestion bewusst getrennte Prozesse sind:
 
 ```bash
 python live_ingest.py --log-file /var/log/auth.log
@@ -219,12 +280,42 @@ konfiguriert werden:
 SSH_SENTINEL_DATABASE=/tmp/ssh_sentinel.db python -m uvicorn main:app --reload
 ```
 
-Die Logüberwachung wird weiterhin separat gestartet. Dabei muss derselbe
+Beim normalen `launcher.py`- oder `main:app`-Start ist die integrierte
+Live-Ingestion inaktiv. Soll sie als separater Prozess laufen, muss dort derselbe
 Datenbankpfad angegeben werden:
 
 ```bash
 python live_ingest.py --log-file /var/log/auth.log --database /tmp/ssh_sentinel.db
 ```
+
+Das Dashboard zeigt zusätzlich, ob die integrierte Überwachung aktiv, inaktiv
+oder fehlgeschlagen ist. Der read-only Endpunkt `GET /api/system/status` liefert
+dieselben knappen Betriebsinformationen ohne Datenbankpfad, Stacktrace oder
+interne Fehlerdetails. Die stabile JSON-Antwort enthält
+`database_ready`, `live_ingestion`, `log_file`, `started_at`,
+`last_event_id`, `last_event_at` und `last_error`.
+
+## Reproduzierbare Brute-Force-Demo
+
+Die Demo verwendet ausschliesslich synthetische Logzeilen und führt weder
+Loginversuche noch Netzwerkaktionen aus:
+
+```bash
+touch /tmp/ssh-sentinel-demo.log
+python run_live.py --log-file /tmp/ssh-sentinel-demo.log
+```
+
+In einem zweiten Terminal werden sechs Fehlversuche von der reservierten
+Dokumentations-IP `203.0.113.50` angehängt:
+
+```bash
+scripts/demo_brute_force.sh /tmp/ssh-sentinel-demo.log
+```
+
+Das Skript überschreibt keine vorhandenen Inhalte. Beim fünften Event entsteht
+mit den Standardwerten ein Alarm; das sechste Event erweitert ihn. Das Ergebnis
+ist unter [http://127.0.0.1:8000/dashboard](http://127.0.0.1:8000/dashboard)
+sichtbar.
 
 ## Eigenständige ausführbare Datei erstellen
 
@@ -332,11 +423,17 @@ curl -X POST \
   http://127.0.0.1:8000/api/analyze
 ```
 
-Ein Health-Check steht unter `GET /api/health` zur Verfügung.
+Ein Health-Check steht unter `GET /api/health`, der Betriebsstatus unter
+`GET /api/system/status` zur Verfügung.
 
 ## Erkennungsregeln und Punkte
 
-Die Demo betrachtet alle erkannten Ereignisse innerhalb einer hochgeladenen Datei. Sie besitzt noch kein gleitendes Zeitfenster. Die Schwellenwerte stehen als Konstanten oben in `detector.py` und lassen sich leicht ändern.
+Die manuelle Upload-Analyse betrachtet alle erkannten Ereignisse innerhalb einer
+hochgeladenen Datei. Sie bleibt bewusst von der persistenten Live-Detection
+getrennt. Für Live-Events wertet `SSH_BRUTE_FORCE` mindestens fünf
+`failed_login`-Events derselben IP innerhalb eines inklusiven 60-Sekunden-
+Fensters aus. Der Alarm hat Severity `HIGH` und einen dokumentierten Score von
+70/100. Schwellenwert und Fenster sind über die Live-CLI konfigurierbar.
 
 | Regel | Auslösung | Punkte pro Treffer |
 |---|---|---:|
@@ -381,15 +478,35 @@ Nicht erkannte Zeilen bleiben unberücksichtigt, zählen aber in der Anzeige der
 python -m pytest -q
 ```
 
-Die Tests decken Parser-Varianten, die Beispielanalyse, einen unauffälligen Log, HTML- und JSON-Endpunkte sowie den lokalen Launcher ab.
+Die Tests decken Parser, Upload-Analyse, Persistenz, File-Tailer, Live-Ingestion,
+Detection, Alarmverwaltung, Dashboard, Betriebsstatus, Start-/Stop-Lebenszyklus
+und das synthetische Demo-Skript ab.
 
-## Erweiterungsmöglichkeiten
+## Datenschutz und lokale Datenhaltung
 
-- Zeitfenster pro Regel statt dateiweiter Zählung
-- zusätzliche Muster wie Port-Scans, ungewöhnliche Uhrzeiten oder Geo-IP-Anreicherung
-- persistente Speicherung von Analysen
-- Export als CSV/PDF oder Versand von Alarmen
-- konfigurierbare Schwellenwerte über Umgebungsvariablen
-- Datei-Streaming für grössere Logs
+Events, rohe erkannte Logzeilen, Alarmnotizen und Zuordnungen liegen in der
+lokalen SQLite-Datei. Sie werden nicht an externe Dienste übertragen. Betreiber
+sind selbst dafür verantwortlich, Dateirechte, Aufbewahrung und Löschung an die
+Schutzbedürftigkeit ihrer Logdaten anzupassen. Datenbankdateien unter `data/`
+werden von Git ausgeschlossen.
+
+## Sicherheitsgrenzen und bekannte Limitationen
+
+- Das lokale Dashboard besitzt keine Authentifizierung oder Rollenverwaltung.
+  Es sollte nicht ungeschützt an eine öffentliche Netzwerkschnittstelle gebunden
+  werden.
+- Die Anwendung ist kein vollständiger produktiver SIEM-Ersatz. Es fehlen unter
+  anderem zentrale Logübertragung, Hochverfügbarkeit, Benachrichtigungen,
+  Mandantentrennung und manipulationssichere Langzeitarchivierung.
+- Der Tailer speichert keinen dauerhaften Offset. Nach einem Prozessneustart
+  beginnt er standardmässig am aktuellen Dateiende; `--from-start` importiert
+  die gesamte vorhandene Datei bewusst erneut.
+- SQLite passt zum lokalen Demo-Betrieb, ist aber nicht für hohe parallele
+  Schreibraten oder verteilte Instanzen ausgelegt.
+- Syslog-Zeitstempel ohne Jahr und Zeitzone werden anhand der lokalen
+  Systemzeitzone und einer Jahreswechsel-Heuristik normalisiert.
+- Ein Fehler im Hintergrundthread wird sichtbar gemeldet und im Dashboard als
+  Fehlerstatus angezeigt; ein automatischer Neustart des Tailers ist nicht Teil
+  dieses Projekts.
 
 Parser, Detektor und Scorer sind absichtlich getrennt. Eine neue Logsyntax wird in `parser.py`, eine neue Regel in `detector.py` und eine andere Klassifizierung in `scorer.py` ergänzt, ohne die Webrouten ändern zu müssen.

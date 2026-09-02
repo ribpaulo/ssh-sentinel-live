@@ -109,6 +109,8 @@ CREATE TABLE IF NOT EXISTS alert_events (
 
 CREATE INDEX IF NOT EXISTS idx_events_event_timestamp
     ON events(event_timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_events_ingested_at
+    ON events(ingested_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_events_timestamp_jd
     ON events(julianday(event_timestamp) DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_events_ip_address
@@ -264,6 +266,16 @@ class Database:
             return connection.execute(
                 "SELECT * FROM events WHERE id = ?",
                 (event_id,),
+            ).fetchone()
+
+    def get_last_ingested_event(self) -> sqlite3.Row | None:
+        with self._connection() as connection:
+            return connection.execute(
+                """
+                SELECT * FROM events
+                ORDER BY ingested_at DESC, id DESC
+                LIMIT 1
+                """
             ).fetchone()
 
     def get_recent_events(self, limit: int = 100) -> list[sqlite3.Row]:
