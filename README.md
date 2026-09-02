@@ -171,12 +171,23 @@ python live_ingest.py \
   --log-file examples/auth_short_bad.log \
   --database data/ssh_sentinel.db \
   --poll-interval 0.5 \
+  --brute-force-threshold 5 \
+  --brute-force-window 60 \
   --from-start
 ```
 
 Die Überwachung wird mit `Ctrl+C` kontrolliert beendet. Zeitstempel ohne Jahr
 werden in der lokalen Systemzeitzone interpretiert und vor dem Speichern nach
 UTC umgerechnet.
+
+Die Live-Ingestion aktiviert standardmässig die Regel `SSH_BRUTE_FORCE`. Sie
+erzeugt bei mindestens fünf fehlgeschlagenen SSH-Anmeldungen derselben
+IP-Adresse innerhalb von 60 Sekunden einen persistenten Alarm und verknüpft die
+auslösenden Events. Weitere Fehlversuche eines laufenden Angriffs erweitern den
+aktiven Alarm. Der Score beträgt 70 von 100: Wiederholte Authentifizierungsfehler
+werden als hohes Risiko bewertet, ohne bereits einen erfolgreichen Zugriff zu
+unterstellen. Schwellenwert und Fenster können mit `--brute-force-threshold`
+beziehungsweise `--brute-force-window` angepasst werden.
 
 ## Eigenständige ausführbare Datei erstellen
 

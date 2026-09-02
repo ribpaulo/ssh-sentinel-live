@@ -4,9 +4,15 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone, tzinfo
 from pathlib import Path
 
+from brute_force_detection import (
+    BruteForceDetectionResult,
+    DetectionOutcome,
+    SSHBruteForceDetector,
+)
 from database import Database, EventData
 from parser import parse_line
 
@@ -30,6 +36,12 @@ MONTHS = {
     "nov": 11,
     "dec": 12,
 }
+
+
+@dataclass(frozen=True, slots=True)
+class LiveIngestionResult:
+    event_id: int | None
+    detection: BruteForceDetectionResult
 
 
 def _as_local(value: datetime, local_timezone: tzinfo | None) -> datetime:
@@ -99,27 +111,37 @@ class LiveIngestionService:
         *,
         local_timezone: tzinfo | None = None,
         now: Callable[[], datetime] | None = None,
+        detector: SSHBruteForceDetector | None = None,
     ) -> None:
         self.database = database
         self.source = str(Path(source))
         self.local_timezone = local_timezone
         self._now = now or (lambda: datetime.now(timezone.utc))
         self._line_number = 0
+        self.detector = detector or SSHBruteForceDetector(database)
 
     def ingest_line(self, line: str) -> int | None:
         """Speichert eine unterstützte Zeile und liefert deren Datenbank-ID."""
 
+        return self.ingest_line_with_detection(line).event_id
+
+    def ingest_line_with_detection(self, line: str) -> LiveIngestionResult:
+        """Speichert eine Zeile und wertet das neue Event anschliessend aus."""
+
         self._line_number += 1
         event = parse_line(line, self._line_number)
         if event is None:
-            return None
+            return LiveIngestionResult(
+                event_id=None,
+                detection=BruteForceDetectionResult(DetectionOutcome.NO_ALERT, None),
+            )
 
         timestamp = normalize_live_timestamp(
             event.timestamp,
             reference_time=self._now(),
             local_timezone=self.local_timezone,
         )
-        return self.database.save_event(
+        event_id = self.database.save_event(
             EventData(
                 event_timestamp=timestamp,
                 hostname=event.hostname,
@@ -130,4 +152,8 @@ class LiveIngestionService:
                 raw_line=event.raw_line,
                 source=self.source,
             )
+        )
+        return LiveIngestionResult(
+            event_id=event_id,
+            detection=self.detector.evaluate(event_id),
         )

@@ -5,7 +5,7 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -22,6 +22,19 @@ class AlertStatus(str, Enum):
     ACKNOWLEDGED = "ACKNOWLEDGED"
     FALSE_POSITIVE = "FALSE_POSITIVE"
     CLOSED = "CLOSED"
+
+
+class AlertMutation(str, Enum):
+    CREATED = "CREATED"
+    UPDATED = "UPDATED"
+    ALREADY_PROCESSED = "ALREADY_PROCESSED"
+
+
+@dataclass(frozen=True, slots=True)
+class AlertMutationResult:
+    action: AlertMutation
+    alert_id: int
+    event_count: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,12 +111,19 @@ CREATE INDEX IF NOT EXISTS idx_events_event_timestamp
     ON events(event_timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_events_ip_address
     ON events(ip_address);
+CREATE INDEX IF NOT EXISTS idx_events_type_ip_timestamp_jd
+    ON events(event_type, ip_address, julianday(event_timestamp), id);
 CREATE INDEX IF NOT EXISTS idx_alerts_status
     ON alerts(status);
 CREATE INDEX IF NOT EXISTS idx_alerts_created_at
     ON alerts(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_alerts_ip_address
     ON alerts(ip_address);
+CREATE INDEX IF NOT EXISTS idx_alerts_rule_ip_status_window_jd
+    ON alerts(
+        rule_id, ip_address, status,
+        julianday(window_end), julianday(window_start)
+    );
 CREATE INDEX IF NOT EXISTS idx_alert_events_event_id
     ON alert_events(event_id);
 """
@@ -127,6 +147,16 @@ def _iso8601(value: datetime | str | None, field_name: str) -> str | None:
     except ValueError as exc:
         raise ValueError(f"{field_name} must be an ISO-8601 timestamp") from exc
     return parsed.isoformat()
+
+
+def _utc_datetime(value: datetime | str | None, field_name: str) -> datetime:
+    iso_value = _iso8601(value, field_name)
+    if iso_value is None:
+        raise ValueError(f"{field_name} must not be None")
+    parsed = datetime.fromisoformat(iso_value)
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError(f"{field_name} must include a timezone")
+    return parsed.astimezone(timezone.utc)
 
 
 def _event_type_value(event_type: EventType | str) -> str:
@@ -245,6 +275,37 @@ class Database:
                 (_limit_value(limit),),
             ).fetchall()
 
+    def get_events_in_window(
+        self,
+        *,
+        event_type: EventType | str,
+        ip_address: str,
+        window_start: datetime | str,
+        window_end: datetime | str,
+    ) -> list[sqlite3.Row]:
+        start = _utc_datetime(window_start, "window_start")
+        end = _utc_datetime(window_end, "window_end")
+        if start > end:
+            raise ValueError("window_start must not be after window_end")
+
+        with self._connection() as connection:
+            return connection.execute(
+                """
+                SELECT * FROM events
+                WHERE event_type = ?
+                  AND ip_address = ?
+                  AND julianday(event_timestamp) >= julianday(?)
+                  AND julianday(event_timestamp) <= julianday(?)
+                ORDER BY julianday(event_timestamp), id
+                """,
+                (
+                    _event_type_value(event_type),
+                    ip_address,
+                    start.isoformat(),
+                    end.isoformat(),
+                ),
+            ).fetchall()
+
     @staticmethod
     def _alert_values(alert: AlertData, now: str) -> tuple[object, ...]:
         return (
@@ -295,6 +356,147 @@ class Database:
             self._link_events(connection, alert_id, event_ids)
             return alert_id
 
+    def save_or_extend_active_alert(
+        self,
+        alert: AlertData,
+        event_ids: Iterable[int],
+        *,
+        evaluated_event_id: int,
+    ) -> AlertMutationResult:
+        """Create or atomically extend an overlapping active alert."""
+
+        if _status_value(alert.status) != AlertStatus.OPEN.value:
+            raise ValueError("A newly created alert must have status OPEN")
+
+        unique_event_ids = list(dict.fromkeys(event_ids))
+        if not unique_event_ids:
+            raise ValueError("event_ids must not be empty")
+        if evaluated_event_id not in unique_event_ids:
+            raise ValueError("evaluated_event_id must be included in event_ids")
+
+        window_start = _utc_datetime(alert.window_start, "window_start")
+        window_end = _utc_datetime(alert.window_end, "window_end")
+        if window_start > window_end:
+            raise ValueError("window_start must not be after window_end")
+
+        now = _utc_now()
+        with self._connection() as connection:
+            # SQLite serializes competing alert decisions before either process
+            # searches for an overlapping active alert.
+            connection.execute("BEGIN IMMEDIATE")
+
+            already_linked = connection.execute(
+                """
+                SELECT alerts.id, alerts.event_count
+                FROM alert_events
+                JOIN alerts ON alerts.id = alert_events.alert_id
+                WHERE alert_events.event_id = ? AND alerts.rule_id = ?
+                ORDER BY alerts.id DESC
+                LIMIT 1
+                """,
+                (evaluated_event_id, alert.rule_id),
+            ).fetchone()
+            if already_linked is not None:
+                return AlertMutationResult(
+                    action=AlertMutation.ALREADY_PROCESSED,
+                    alert_id=already_linked["id"],
+                    event_count=already_linked["event_count"],
+                )
+
+            active_alert = connection.execute(
+                """
+                SELECT * FROM alerts
+                WHERE rule_id = ?
+                  AND ip_address = ?
+                  AND status IN (?, ?)
+                  AND julianday(window_end) >= julianday(?)
+                  AND julianday(window_start) <= julianday(?)
+                ORDER BY julianday(window_end) DESC, id DESC
+                LIMIT 1
+                """,
+                (
+                    alert.rule_id,
+                    alert.ip_address,
+                    AlertStatus.OPEN.value,
+                    AlertStatus.ACKNOWLEDGED.value,
+                    window_start.isoformat(),
+                    window_end.isoformat(),
+                ),
+            ).fetchone()
+
+            if active_alert is None:
+                persisted_alert = replace(alert, event_count=len(unique_event_ids))
+                cursor = connection.execute(
+                    """
+                    INSERT INTO alerts (
+                        rule_id, title, description, severity, score, ip_address,
+                        username, event_count, window_start, window_end, status,
+                        note, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    self._alert_values(persisted_alert, now),
+                )
+                if cursor.lastrowid is None:
+                    raise RuntimeError("SQLite did not return an alert ID")
+                alert_id = cursor.lastrowid
+                self._link_events(connection, alert_id, unique_event_ids)
+                return AlertMutationResult(
+                    action=AlertMutation.CREATED,
+                    alert_id=alert_id,
+                    event_count=len(unique_event_ids),
+                )
+
+            alert_id = active_alert["id"]
+            connection.executemany(
+                "INSERT OR IGNORE INTO alert_events (alert_id, event_id) VALUES (?, ?)",
+                ((alert_id, event_id) for event_id in unique_event_ids),
+            )
+            linked_events = connection.execute(
+                """
+                SELECT events.event_timestamp, events.username
+                FROM events
+                JOIN alert_events ON alert_events.event_id = events.id
+                WHERE alert_events.alert_id = ?
+                """,
+                (alert_id,),
+            ).fetchall()
+            timestamps = [
+                _utc_datetime(row["event_timestamp"], "event_timestamp")
+                for row in linked_events
+            ]
+            usernames = [row["username"] for row in linked_events]
+            username = (
+                usernames[0]
+                if usernames and all(item == usernames[0] for item in usernames)
+                else None
+            )
+            connection.execute(
+                """
+                UPDATE alerts
+                SET title = ?, description = ?, severity = ?, score = ?,
+                    username = ?, event_count = ?, window_start = ?,
+                    window_end = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (
+                    alert.title,
+                    alert.description,
+                    alert.severity,
+                    alert.score,
+                    username,
+                    len(linked_events),
+                    min(timestamps).isoformat(),
+                    max(timestamps).isoformat(),
+                    now,
+                    alert_id,
+                ),
+            )
+            return AlertMutationResult(
+                action=AlertMutation.UPDATED,
+                alert_id=alert_id,
+                event_count=len(linked_events),
+            )
+
     def link_alert_events(self, alert_id: int, event_ids: Iterable[int]) -> None:
         with self._connection() as connection:
             self._link_events(connection, alert_id, event_ids)
@@ -314,7 +516,7 @@ class Database:
                 FROM events
                 JOIN alert_events ON alert_events.event_id = events.id
                 WHERE alert_events.alert_id = ?
-                ORDER BY events.event_timestamp, events.id
+                ORDER BY julianday(events.event_timestamp), events.id
                 """,
                 (alert_id,),
             ).fetchall()
