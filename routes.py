@@ -1,5 +1,6 @@
 """HTTP-Routen für die HTML-Oberfläche und die JSON-API."""
 
+import sqlite3
 from pathlib import Path
 from typing import Annotated
 
@@ -18,7 +19,12 @@ from fastapi.templating import Jinja2Templates
 
 from database import AlertStatus, Database
 from models.analysis import AnalysisResult
-from models.dashboard import DashboardAlert, DashboardAlertDetail, DashboardEvent
+from models.dashboard import (
+    DashboardAlert,
+    DashboardAlertDetail,
+    DashboardAlertUpdate,
+    DashboardEvent,
+)
 from service import analyze_log
 
 
@@ -73,6 +79,14 @@ def _alert_payload(row: object) -> dict[str, object]:
     }
 
 
+def _alert_detail_payload(alert: dict[str, object]) -> dict[str, object]:
+    payload = _alert_payload(alert)
+    payload["description"] = alert["description"]
+    payload["note"] = alert["note"]
+    payload["events"] = [_event_payload(event) for event in alert["events"]]  # type: ignore[union-attr]
+    return payload
+
+
 async def _read_log_file(upload: UploadFile) -> tuple[str, str]:
     """Validiert und liest eine kleine Text-Logdatei sicher ein."""
 
@@ -108,7 +122,7 @@ async def start_page(request: Request) -> HTMLResponse:
 
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request) -> HTMLResponse:
-    """Zeigt das read-only Live-Dashboard."""
+    """Zeigt das Live-Dashboard."""
 
     return templates.TemplateResponse(request=request, name="dashboard.html")
 
@@ -181,7 +195,28 @@ async def alert_detail(
     alert = database.get_alert_with_events(alert_id)
     if alert is None:
         raise HTTPException(status_code=404, detail="Alarm nicht gefunden.")
-    payload = _alert_payload(alert)
-    payload["description"] = alert["description"]
-    payload["events"] = [_event_payload(event) for event in alert["events"]]
-    return payload
+    return _alert_detail_payload(alert)
+
+
+@router.patch("/api/alerts/{alert_id}", response_model=DashboardAlertDetail)
+async def update_alert(
+    alert_id: Annotated[int, ApiPath(ge=1)],
+    update: DashboardAlertUpdate,
+    database: Database = Depends(get_database),
+) -> dict[str, object]:
+    """Aktualisiert Status und Untersuchungsnotiz eines Alarms."""
+
+    try:
+        database.update_alert_status_and_note(alert_id, update.status, update.note)
+        alert = database.get_alert_with_events(alert_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail="Alarm nicht gefunden.") from exc
+    except sqlite3.Error as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Alarm konnte nicht gespeichert werden.",
+        ) from exc
+
+    if alert is None:
+        raise HTTPException(status_code=404, detail="Alarm nicht gefunden.")
+    return _alert_detail_payload(alert)

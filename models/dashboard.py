@@ -1,6 +1,6 @@
-"""API-Modelle für das read-only Live-Dashboard."""
+"""API-Modelle für das Live-Dashboard und die Alarmverwaltung."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from database import AlertStatus
 from models.analysis import EventType
@@ -35,4 +35,20 @@ class DashboardAlert(BaseModel):
 
 class DashboardAlertDetail(DashboardAlert):
     description: str
+    note: str | None
     events: list[DashboardEvent]
+
+
+class DashboardAlertUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: AlertStatus
+    note: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("note")
+    @classmethod
+    def normalize_note(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
