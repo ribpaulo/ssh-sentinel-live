@@ -1,65 +1,65 @@
 {% extends "base.html" %}
-{% block title %}Live-Dashboard · SSH Sentinel{% endblock %}
+{% block title %}Live dashboard · SSH Sentinel{% endblock %}
 {% block content %}
 <section class="dashboard-header">
     <div>
-        <p class="eyebrow">Persistente SSH-Überwachung</p>
-        <h1>Live-Dashboard</h1>
-        <p class="lead">Zuletzt gespeicherte SSH-Ereignisse und Brute-Force-Alarme aus der lokalen SQLite-Datenbank.</p>
+        <p class="eyebrow">Persistent SSH monitoring</p>
+        <h1>Live dashboard</h1>
+        <p class="lead">Recently stored SSH events and brute-force alerts from the local SQLite database.</p>
     </div>
     <div id="connection-status" class="connection-status is-loading" role="status" aria-live="polite">
         <span aria-hidden="true">●</span>
-        <strong>Verbindung wird aufgebaut</strong>
+        <strong>Connecting</strong>
     </div>
 </section>
 
-<section class="dashboard-metrics" aria-label="Zusammenfassung">
+<section class="dashboard-metrics" aria-label="Summary">
     <article>
-        <span>Geladene Events</span>
+        <span>Loaded events</span>
         <strong id="event-count">0</strong>
-        <small>maximal 50 Einträge</small>
+        <small>up to 50 entries</small>
     </article>
     <article>
-        <span>Aktive Alarme</span>
+        <span>Active alerts</span>
         <strong id="active-alert-count">0</strong>
-        <small>OPEN oder ACKNOWLEDGED</small>
+        <small>OPEN or ACKNOWLEDGED</small>
     </article>
     <article>
-        <span>Letzte Aktualisierung</span>
+        <span>Last update</span>
         <strong id="last-updated" class="metric-time">—</strong>
-        <small>automatisch alle 4 Sekunden</small>
+        <small>automatically every 4 seconds</small>
     </article>
     <article>
         <span>Monitoring</span>
-        <strong id="monitoring-state" class="metric-status is-inactive">INAKTIV</strong>
-        <small id="monitoring-detail">App läuft ohne integrierte Live-Ingestion.</small>
-        <small id="monitoring-last-event">Letztes gespeichertes Event: —</small>
+        <strong id="monitoring-state" class="metric-status is-inactive">INACTIVE</strong>
+        <small id="monitoring-detail">The app is running without integrated live ingestion.</small>
+        <small id="monitoring-last-event">Last stored event: —</small>
     </article>
 </section>
 
 <section class="panel dashboard-panel">
     <div class="section-heading">
-        <div><p class="eyebrow">Detection</p><h2>Alarme</h2></div>
+        <div><p class="eyebrow">Detection</p><h2>Alerts</h2></div>
         <div class="alert-list-controls">
-            <label for="alert-status-filter">Statusfilter</label>
+            <label for="alert-status-filter">Status filter</label>
             <select id="alert-status-filter">
-                <option value="">Alle</option>
+                <option value="">All</option>
                 <option value="OPEN">OPEN</option>
                 <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
                 <option value="FALSE_POSITIVE">FALSE_POSITIVE</option>
                 <option value="CLOSED">CLOSED</option>
             </select>
-            <span id="alert-count-badge" class="count-badge">0 geladen</span>
+            <span id="alert-count-badge" class="count-badge">0 loaded</span>
         </div>
     </div>
     <div class="table-wrap">
         <table class="dashboard-table">
             <thead><tr>
-                <th>ID</th><th>Erstellt</th><th>Severity</th><th>Titel / Regel</th>
-                <th>IP-Adresse</th><th>Benutzer</th><th>Events</th><th>Zeitfenster</th><th>Status</th>
+                <th>ID</th><th>Created</th><th>Severity</th><th>Title / rule</th>
+                <th>IP address</th><th>Username</th><th>Events</th><th>Time window</th><th>Status</th>
             </tr></thead>
             <tbody id="alerts-body">
-                <tr><td colspan="9" class="table-empty">Noch keine Alarme geladen.</td></tr>
+                <tr><td colspan="9" class="table-empty">No alerts loaded yet.</td></tr>
             </tbody>
         </table>
     </div>
@@ -67,17 +67,17 @@
 
 <section class="panel dashboard-panel">
     <div class="section-heading">
-        <div><p class="eyebrow">Ingestion</p><h2>SSH-Events</h2></div>
-        <span id="event-count-badge" class="count-badge">0 geladen</span>
+        <div><p class="eyebrow">Ingestion</p><h2>SSH events</h2></div>
+        <span id="event-count-badge" class="count-badge">0 loaded</span>
     </div>
     <div class="table-wrap">
         <table class="dashboard-table">
             <thead><tr>
-                <th>Zeitpunkt</th><th>Eventtyp</th><th>Hostname</th><th>IP-Adresse</th>
-                <th>Benutzer</th><th>Authentifizierung</th><th>Quelle</th>
+                <th>Timestamp</th><th>Event type</th><th>Hostname</th><th>IP address</th>
+                <th>Username</th><th>Authentication</th><th>Source</th>
             </tr></thead>
             <tbody id="events-body">
-                <tr><td colspan="7" class="table-empty">Noch keine Events geladen.</td></tr>
+                <tr><td colspan="7" class="table-empty">No events loaded yet.</td></tr>
             </tbody>
         </table>
     </div>
@@ -86,10 +86,10 @@
 <dialog id="alert-dialog" class="alert-dialog" aria-labelledby="alert-dialog-title">
     <div class="dialog-heading">
         <div>
-            <p class="eyebrow">Alarmdetails</p>
-            <h2 id="alert-dialog-title">Alarm</h2>
+            <p class="eyebrow">Alert details</p>
+            <h2 id="alert-dialog-title">Alert</h2>
         </div>
-        <form method="dialog"><button class="dialog-close" type="submit" aria-label="Details schliessen">×</button></form>
+        <form method="dialog"><button class="dialog-close" type="submit" aria-label="Close alert details">×</button></form>
     </div>
     <p id="alert-description" class="dialog-description"></p>
     <dl id="alert-metadata" class="alert-metadata"></dl>
@@ -104,19 +104,19 @@
             </select>
         </div>
         <div class="form-field">
-            <label for="alert-note">Untersuchungsnotiz <span>optional, maximal 2000 Zeichen</span></label>
-            <textarea id="alert-note" name="note" rows="5" maxlength="2000" placeholder="Beobachtungen und Untersuchungsergebnis festhalten"></textarea>
+            <label for="alert-note">Investigation note <span>optional, maximum 2000 characters</span></label>
+            <textarea id="alert-note" name="note" rows="5" maxlength="2000" placeholder="Record observations and investigation results"></textarea>
         </div>
         <p id="alert-save-message" class="save-message" role="status" aria-live="polite"></p>
         <div class="dialog-actions">
-            <button id="alert-cancel" class="secondary-button" type="button">Schliessen</button>
-            <button id="alert-save" class="save-button" type="submit">Änderungen speichern</button>
+            <button id="alert-cancel" class="secondary-button" type="button">Close</button>
+            <button id="alert-save" class="save-button" type="submit">Save changes</button>
         </div>
     </form>
-    <h3>Verknüpfte Events</h3>
+    <h3>Linked events</h3>
     <div class="table-wrap">
         <table class="dashboard-table">
-            <thead><tr><th>Zeitpunkt</th><th>Typ</th><th>Host</th><th>IP-Adresse</th><th>Benutzer</th><th>Methode</th></tr></thead>
+            <thead><tr><th>Timestamp</th><th>Type</th><th>Host</th><th>IP address</th><th>Username</th><th>Method</th></tr></thead>
             <tbody id="alert-events-body"></tbody>
         </table>
     </div>

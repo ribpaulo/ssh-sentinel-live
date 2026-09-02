@@ -1,4 +1,4 @@
-"""SQLite-Persistenz für SSH-Ereignisse und Alarme."""
+"""SQLite persistence for SSH events and alerts."""
 
 from __future__ import annotations
 
@@ -575,7 +575,7 @@ class Database:
         status: AlertStatus | str,
         note: str | None,
     ) -> sqlite3.Row:
-        """Aktualisiert Status und Notiz atomar und liefert den Alarm zurück."""
+        """Atomically update status and note and return the alert."""
 
         status_value = _status_value(status)
         with self._connection() as connection:

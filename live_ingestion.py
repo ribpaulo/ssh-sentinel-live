@@ -1,4 +1,4 @@
-"""Überführt neue SSH-Logzeilen über den bestehenden Parser in SQLite."""
+"""Transfer new SSH log lines to SQLite through the existing parser."""
 
 from __future__ import annotations
 
@@ -66,7 +66,7 @@ def normalize_live_timestamp(
     reference_time: datetime | None = None,
     local_timezone: tzinfo | None = None,
 ) -> datetime | None:
-    """Normalisiert Parser-Zeitstempel anhand eines Referenzzeitpunkts nach UTC."""
+    """Normalize parser timestamps to UTC using a reference time."""
 
     if value is None:
         return None
@@ -102,7 +102,7 @@ def normalize_live_timestamp(
 
 
 class LiveIngestionService:
-    """Parst einzelne Live-Zeilen und speichert unterstützte SSH-Ereignisse."""
+    """Parse individual live lines and store supported SSH events."""
 
     def __init__(
         self,
@@ -121,12 +121,12 @@ class LiveIngestionService:
         self.detector = detector or SSHBruteForceDetector(database)
 
     def ingest_line(self, line: str) -> int | None:
-        """Speichert eine unterstützte Zeile und liefert deren Datenbank-ID."""
+        """Store a supported line and return its database ID."""
 
         return self.ingest_line_with_detection(line).event_id
 
     def ingest_line_with_detection(self, line: str) -> LiveIngestionResult:
-        """Speichert eine Zeile und wertet das neue Event anschliessend aus."""
+        """Store a line and then evaluate the new event."""
 
         self._line_number += 1
         event = parse_line(line, self._line_number)

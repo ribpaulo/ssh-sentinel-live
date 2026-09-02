@@ -78,14 +78,14 @@ def test_buffers_incomplete_line_until_newline_arrives(tmp_path: Path) -> None:
 def test_buffers_split_multibyte_utf8_character(tmp_path: Path) -> None:
     path = tmp_path / "auth.log"
     path.touch()
-    encoded = "Grüsse".encode("utf-8")
-    split_at = encoded.index(b"\xc3") + 1
+    encoded = "hello 🌍".encode("utf-8")
+    split_at = encoded.index(b"\xf0") + 1
 
     with FileTailer(path) as tailer:
         append_bytes(path, encoded[:split_at])
         assert tailer.poll() == []
         append_bytes(path, encoded[split_at:] + b"\n")
-        assert tailer.poll() == ["Grüsse"]
+        assert tailer.poll() == ["hello 🌍"]
 
 
 def test_invalid_utf8_is_reported_and_handle_is_closed(tmp_path: Path) -> None:

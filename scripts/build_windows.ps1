@@ -13,5 +13,5 @@ if (Test-Path $VirtualEnvironmentPython) {
 & $PythonCommand -m PyInstaller --clean --noconfirm ssh-sentinel.spec
 
 Write-Host ""
-Write-Host "Windows-Build erstellt: $ProjectDirectory\dist\ssh-sentinel.exe"
-Write-Host "Start: .\dist\ssh-sentinel.exe"
+Write-Host "Windows build created: $ProjectDirectory\dist\ssh-sentinel.exe"
+Write-Host "Run: .\dist\ssh-sentinel.exe"

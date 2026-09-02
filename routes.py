@@ -1,4 +1,4 @@
-"""HTTP-Routen für die HTML-Oberfläche und die JSON-API."""
+"""HTTP routes for the HTML interface and JSON API."""
 
 import sqlite3
 from pathlib import Path
@@ -89,48 +89,48 @@ def _alert_detail_payload(alert: dict[str, object]) -> dict[str, object]:
 
 
 async def _read_log_file(upload: UploadFile) -> tuple[str, str]:
-    """Validiert und liest eine kleine Text-Logdatei sicher ein."""
+    """Validate and safely read a small text log file."""
 
     filename = Path(upload.filename or "upload.log").name
     suffix = Path(filename).suffix.lower()
     if suffix not in ALLOWED_SUFFIXES:
-        raise HTTPException(status_code=400, detail="Erlaubt sind nur .log- und .txt-Dateien.")
+        raise HTTPException(status_code=400, detail="Only .log and .txt files are allowed.")
 
     data = await upload.read(MAX_UPLOAD_BYTES + 1)
     await upload.close()
     if len(data) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="Die Datei darf maximal 2 MB gross sein.")
+        raise HTTPException(status_code=413, detail="The file must not exceed 2 MB.")
     if not data:
-        raise HTTPException(status_code=400, detail="Die hochgeladene Datei ist leer.")
+        raise HTTPException(status_code=400, detail="The uploaded file is empty.")
     if b"\x00" in data:
-        raise HTTPException(status_code=400, detail="Die Datei scheint keine Textdatei zu sein.")
+        raise HTTPException(status_code=400, detail="The file does not appear to be a text file.")
 
     try:
         return data.decode("utf-8"), filename
     except UnicodeDecodeError as exc:
         raise HTTPException(
             status_code=400,
-            detail="Die Datei muss UTF-8-kodierter Text sein.",
+            detail="The file must be UTF-8 encoded text.",
         ) from exc
 
 
 @router.get("/", response_class=HTMLResponse)
 async def start_page(request: Request) -> HTMLResponse:
-    """Zeigt die Upload-Seite."""
+    """Display the upload page."""
 
     return templates.TemplateResponse(request=request, name="index.html")
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request) -> HTMLResponse:
-    """Zeigt das Live-Dashboard."""
+    """Display the live dashboard."""
 
     return templates.TemplateResponse(request=request, name="dashboard.html")
 
 
 @router.post("/analyze", response_class=HTMLResponse)
 async def analyze_page(request: Request, log_file: UploadFile = File(...)) -> HTMLResponse:
-    """Analysiert eine Datei und rendert das Resultat als HTML."""
+    """Analyze a file and render the result as HTML."""
 
     try:
         content, filename = await _read_log_file(log_file)
@@ -152,7 +152,7 @@ async def analyze_page(request: Request, log_file: UploadFile = File(...)) -> HT
 
 @router.post("/api/analyze", response_model=AnalysisResult)
 async def analyze_api(log_file: UploadFile = File(...)) -> AnalysisResult:
-    """Liefert dasselbe Analyseergebnis als strukturiertes JSON."""
+    """Return the same analysis result as structured JSON."""
 
     content, filename = await _read_log_file(log_file)
     return analyze_log(content, filename)
@@ -160,14 +160,14 @@ async def analyze_api(log_file: UploadFile = File(...)) -> AnalysisResult:
 
 @router.get("/api/health")
 async def health() -> dict[str, str]:
-    """Einfacher Health-Check für Entwicklung und Deployment."""
+    """Simple health check for development and deployment."""
 
     return {"status": "ok"}
 
 
 @router.get("/api/system/status", response_model=SystemStatusResponse)
 async def system_status(request: Request) -> dict[str, object]:
-    """Liefert den knappen Betriebsstatus ohne interne Fehlerdetails."""
+    """Return concise operating status without internal error details."""
 
     database: Database = request.app.state.database
     latest_event = None
@@ -200,7 +200,7 @@ async def recent_events(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     database: Database = Depends(get_database),
 ) -> list[dict[str, object]]:
-    """Liefert die neuesten persistenten SSH-Ereignisse."""
+    """Return the most recent persistent SSH events."""
 
     return [_event_payload(row) for row in database.get_recent_events(limit)]
 
@@ -211,7 +211,7 @@ async def recent_alerts(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     database: Database = Depends(get_database),
 ) -> list[dict[str, object]]:
-    """Liefert die neuesten Alarme, optional nach Status gefiltert."""
+    """Return the latest alerts, optionally filtered by status."""
 
     return [_alert_payload(row) for row in database.get_alerts(status, limit)]
 
@@ -221,11 +221,11 @@ async def alert_detail(
     alert_id: Annotated[int, ApiPath(ge=1)],
     database: Database = Depends(get_database),
 ) -> dict[str, object]:
-    """Liefert einen Alarm inklusive seiner verknüpften Events."""
+    """Return an alert including its linked events."""
 
     alert = database.get_alert_with_events(alert_id)
     if alert is None:
-        raise HTTPException(status_code=404, detail="Alarm nicht gefunden.")
+        raise HTTPException(status_code=404, detail="Alert not found.")
     return _alert_detail_payload(alert)
 
 
@@ -235,19 +235,19 @@ async def update_alert(
     update: DashboardAlertUpdate,
     database: Database = Depends(get_database),
 ) -> dict[str, object]:
-    """Aktualisiert Status und Untersuchungsnotiz eines Alarms."""
+    """Update an alert's status and investigation note."""
 
     try:
         database.update_alert_status_and_note(alert_id, update.status, update.note)
         alert = database.get_alert_with_events(alert_id)
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail="Alarm nicht gefunden.") from exc
+        raise HTTPException(status_code=404, detail="Alert not found.") from exc
     except sqlite3.Error as exc:
         raise HTTPException(
             status_code=500,
-            detail="Alarm konnte nicht gespeichert werden.",
+            detail="Alert could not be saved.",
         ) from exc
 
     if alert is None:
-        raise HTTPException(status_code=404, detail="Alarm nicht gefunden.")
+        raise HTTPException(status_code=404, detail="Alert not found.")
     return _alert_detail_payload(alert)

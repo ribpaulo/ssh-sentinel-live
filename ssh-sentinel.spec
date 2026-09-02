@@ -1,4 +1,4 @@
-"""PyInstaller-Konfiguration für Linux und Windows."""
+"""PyInstaller configuration for Linux and Windows."""
 
 from pathlib import Path
 
@@ -7,15 +7,15 @@ from PyInstaller.utils.hooks import collect_submodules
 
 project_root = Path(SPECPATH)
 
-# Templates, CSS und JavaScript werden neben den Python-Modulen in das interne
-# Bundle aufgenommen. PyInstaller stellt sie bei --onefile zur Laufzeit bereit.
+# Templates, CSS, and JavaScript are included in the internal bundle alongside
+# the Python modules. PyInstaller exposes them at runtime in --onefile mode.
 data_files = [
     (str(project_root / "templates"), "templates"),
     (str(project_root / "static"), "static"),
 ]
 
-# Uvicorn lädt Protokoll- und Loop-Implementierungen über Import-Strings. Die
-# Submodule müssen PyInstaller deshalb ausdrücklich bekannt gemacht werden.
+# Uvicorn loads protocol and loop implementations through import strings, so
+# the submodules must be declared explicitly for PyInstaller.
 hidden_imports = collect_submodules("uvicorn")
 
 analysis = Analysis(

@@ -1,4 +1,4 @@
-"""API-Modelle für das Live-Dashboard und die Alarmverwaltung."""
+"""API models for the live dashboard and alert management."""
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 

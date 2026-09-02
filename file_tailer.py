@@ -1,4 +1,4 @@
-"""Polling-basierter Tailer für fortlaufend ergänzte Logdateien."""
+"""Polling-based tailer for continuously appended log files."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ FileIdentity = tuple[int, int]
 
 
 class FileTailer:
-    """Liest ausschliesslich neu verfügbare, vollständige Zeilen einer Datei."""
+    """Read only newly available, complete lines from a file."""
 
     def __init__(
         self,
@@ -57,7 +57,7 @@ class FileTailer:
             raise
 
     def start(self) -> None:
-        """Öffnet die Datei und legt die initiale Leseposition fest."""
+        """Open the file and establish the initial read position."""
 
         if self._file is not None:
             return
@@ -134,7 +134,7 @@ class FileTailer:
         return [*lines, *self._read_complete_lines()]
 
     def poll(self) -> list[str]:
-        """Gibt alle seit dem letzten Aufruf vervollständigten Zeilen zurück."""
+        """Return all lines completed since the previous call."""
 
         if self._file is None:
             self.start()
@@ -143,7 +143,7 @@ class FileTailer:
         try:
             path_stat = self.path.stat()
         except FileNotFoundError:
-            # Nach einem Rename kann der alte Handle noch letzte Daten enthalten.
+            # After a rename, the old handle may still contain trailing data.
             return self._read_complete_lines()
 
         if self._file_identity(path_stat) != self._identity:
@@ -157,12 +157,12 @@ class FileTailer:
         return self._read_complete_lines()
 
     def stop(self) -> None:
-        """Beendet eine laufende follow-Schleife und weckt deren Wartephase auf."""
+        """Stop a running follow loop and wake its wait phase."""
 
         self._stop_event.set()
 
     def follow(self) -> Iterator[str]:
-        """Liefert Zeilen bis stop aufgerufen oder die Iteration abgebrochen wird."""
+        """Yield lines until stop is called or iteration is abandoned."""
 
         self.start()
         try:

@@ -1,4 +1,4 @@
-"""Einheitlicher Start von FastAPI-Dashboard und Live-Ingestion."""
+"""Unified startup for the FastAPI dashboard and live ingestion."""
 
 from __future__ import annotations
 
@@ -30,70 +30,70 @@ DEFAULT_JOIN_TIMEOUT = 5.0
 def _port(value: str) -> int:
     port = int(value)
     if not 1 <= port <= 65535:
-        raise argparse.ArgumentTypeError("muss zwischen 1 und 65535 liegen")
+        raise argparse.ArgumentTypeError("must be between 1 and 65535")
     return port
 
 
 def _readable_log_file(value: str) -> Path:
     path = Path(value)
     if not path.exists():
-        raise argparse.ArgumentTypeError(f"Logdatei existiert nicht: {path}")
+        raise argparse.ArgumentTypeError(f"Log file does not exist: {path}")
     if not path.is_file():
-        raise argparse.ArgumentTypeError(f"Logpfad ist keine reguläre Datei: {path}")
+        raise argparse.ArgumentTypeError(f"Log path is not a regular file: {path}")
     try:
         with path.open("rb"):
             pass
     except OSError as exc:
-        raise argparse.ArgumentTypeError(f"Logdatei ist nicht lesbar: {path}") from exc
+        raise argparse.ArgumentTypeError(f"Log file is not readable: {path}") from exc
     return path
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Startet SSH Sentinel mit Dashboard und Live-Ingestion.",
+        description="Start SSH Sentinel with the dashboard and live ingestion.",
     )
     parser.add_argument(
         "--log-file",
         required=True,
         type=_readable_log_file,
-        help="Zu überwachende reguläre und lesbare Logdatei",
+        help="Regular, readable log file to monitor",
     )
     parser.add_argument(
         "--database",
         type=Path,
         default=DEFAULT_DATABASE_PATH,
-        help=f"SQLite-Datei (Standard: {DEFAULT_DATABASE_PATH})",
+        help=f"SQLite file (default: {DEFAULT_DATABASE_PATH})",
     )
-    parser.add_argument("--host", default=DEFAULT_HOST, help=f"HTTP-Host (Standard: {DEFAULT_HOST})")
-    parser.add_argument("--port", type=_port, default=DEFAULT_PORT, help=f"HTTP-Port (Standard: {DEFAULT_PORT})")
+    parser.add_argument("--host", default=DEFAULT_HOST, help=f"HTTP host (default: {DEFAULT_HOST})")
+    parser.add_argument("--port", type=_port, default=DEFAULT_PORT, help=f"HTTP port (default: {DEFAULT_PORT})")
     parser.add_argument(
         "--poll-interval",
         type=_positive_float,
         default=0.5,
-        help="Polling-Intervall in Sekunden (Standard: 0.5)",
+        help="Polling interval in seconds (default: 0.5)",
     )
     parser.add_argument(
         "--from-start",
         action="store_true",
-        help="Vorhandene Dateiinhalte beim Start ebenfalls einlesen",
+        help="Also read existing file content at startup",
     )
     parser.add_argument(
         "--brute-force-threshold",
         type=_minimum_two_int,
         default=SSHBruteForceDetector.DEFAULT_THRESHOLD,
-        help="Fehlversuche bis zum Alarm (Standard: 5)",
+        help="Failed attempts required for an alert (default: 5)",
     )
     parser.add_argument(
         "--brute-force-window",
         type=_positive_float,
         default=SSHBruteForceDetector.DEFAULT_WINDOW_SECONDS,
-        help="Zeitfenster in Sekunden (Standard: 60)",
+        help="Detection window in seconds (default: 60)",
     )
     return parser
 
 
 class LiveIngestionWorker:
-    """Führt die bestehende Ingestion kontrolliert in genau einem Thread aus."""
+    """Run the existing ingestion in exactly one controlled thread."""
 
     def __init__(
         self,
@@ -117,7 +117,7 @@ class LiveIngestionWorker:
 
     @staticmethod
     def _print_error(error: BaseException) -> None:
-        print(f"Fehler in der Live-Ingestion: {error}", file=sys.stderr)
+        print(f"Live ingestion error: {error}", file=sys.stderr)
 
     @property
     def is_alive(self) -> bool:
@@ -125,7 +125,7 @@ class LiveIngestionWorker:
 
     def start(self) -> None:
         if self._thread is not None:
-            raise RuntimeError("Live-Ingestion wurde bereits gestartet")
+            raise RuntimeError("Live ingestion has already been started")
         self.status.mark_active()
         self._thread = threading.Thread(
             target=self._run,
@@ -149,7 +149,7 @@ class LiveIngestionWorker:
                 if self._on_result is not None:
                     self._on_result(result)
             if not self._stop_requested.is_set():
-                raise RuntimeError("Live-Ingestion wurde unerwartet beendet")
+                raise RuntimeError("Live ingestion stopped unexpectedly")
         except Exception as exc:
             self.error = exc
             self.status.record_error(exc)
@@ -169,7 +169,7 @@ class LiveIngestionWorker:
             return True
         thread.join(timeout)
         if thread.is_alive():
-            error = RuntimeError("Live-Ingestion konnte nicht rechtzeitig beendet werden")
+            error = RuntimeError("Live ingestion did not stop within the timeout")
             self.error = error
             self.status.record_error(error)
             self._on_error(error)
@@ -195,15 +195,15 @@ def _display_result(database: Database, result: LiveIngestionResult) -> None:
         return
     event = database.get_event(result.event_id)
     if event is None:
-        raise RuntimeError(f"Gespeichertes Event {result.event_id} wurde nicht gefunden")
+        raise RuntimeError(f"Stored event {result.event_id} was not found")
     print(
         f"Event {result.event_id}: {event['event_type']} "
         f"{event['ip_address']} ({event['event_timestamp']})"
     )
     if result.detection.outcome == DetectionOutcome.CREATED:
-        print(f"Alarm {result.detection.alert_id} erstellt: SSH_BRUTE_FORCE")
+        print(f"Alert {result.detection.alert_id} created: SSH_BRUTE_FORCE")
     elif result.detection.outcome == DetectionOutcome.UPDATED:
-        print(f"Alarm {result.detection.alert_id} aktualisiert: SSH_BRUTE_FORCE")
+        print(f"Alert {result.detection.alert_id} updated: SSH_BRUTE_FORCE")
 
 
 def build_live_application(args: argparse.Namespace) -> LiveApplication:
@@ -242,7 +242,7 @@ def run(argv: Sequence[str] | None = None) -> int:
     args = build_argument_parser().parse_args(argv)
     if not port_is_available(args.host, args.port):
         print(
-            f"Fehler: Port {args.port} auf Host {args.host} ist nicht verfügbar.",
+            f"Error: port {args.port} on host {args.host} is unavailable.",
             file=sys.stderr,
         )
         return 1
@@ -250,13 +250,13 @@ def run(argv: Sequence[str] | None = None) -> int:
     try:
         live = build_live_application(args)
     except (OSError, sqlite3.Error, ValueError) as exc:
-        print(f"Fehler beim Initialisieren von SSH Sentinel: {exc}", file=sys.stderr)
+        print(f"Error while initializing SSH Sentinel: {exc}", file=sys.stderr)
         return 1
 
-    print(f"Logdatei: {args.log_file}")
-    print(f"Datenbank: {args.database}")
+    print(f"Log file: {args.log_file}")
+    print(f"Database: {args.database}")
     print(f"Dashboard: {live.dashboard_url}")
-    print("Live-Betrieb läuft. Zum Beenden Ctrl+C drücken.")
+    print("Live operation is running. Press Ctrl+C to stop.")
 
     exit_code = 0
     try:
@@ -274,7 +274,7 @@ def run(argv: Sequence[str] | None = None) -> int:
     except KeyboardInterrupt:
         pass
     except (OSError, RuntimeError) as exc:
-        print(f"Fehler im einheitlichen Live-Betrieb: {exc}", file=sys.stderr)
+        print(f"Unified live operation error: {exc}", file=sys.stderr)
         exit_code = 1
     finally:
         if not live.worker.stop():
@@ -282,7 +282,7 @@ def run(argv: Sequence[str] | None = None) -> int:
 
     if live.worker.error is not None:
         exit_code = 1
-    print("SSH Sentinel wurde beendet.")
+    print("SSH Sentinel stopped.")
     return exit_code
 
 

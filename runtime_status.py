@@ -1,4 +1,4 @@
-"""Thread-sicherer Betriebsstatus für den integrierten Live-Modus."""
+"""Thread-safe operating status for integrated live mode."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ class LiveSystemSnapshot:
 
 
 class LiveSystemStatus:
-    """Hält wenige Laufzeitinformationen ohne globale mutable Daten."""
+    """Hold a small amount of runtime information without global mutable data."""
 
     def __init__(
         self,
@@ -67,9 +67,9 @@ class LiveSystemStatus:
             self._last_event_at = occurred_at
 
     def record_error(self, error: BaseException) -> None:
-        # Die API nennt nur die Fehlerklasse. Details bleiben in der lokalen
-        # Konsolenausgabe und können so keine internen Informationen offenlegen.
-        safe_message = f"Live-Ingestion fehlgeschlagen ({type(error).__name__})."
+        # The API exposes only the exception class. Details remain in the local
+        # console output so internal information is not disclosed.
+        safe_message = f"Live ingestion failed ({type(error).__name__})."
         with self._lock:
             self._state = LiveIngestionState.ERROR
             self._last_error = safe_message

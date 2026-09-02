@@ -1,4 +1,4 @@
-"""Kommandozeilenstart für die fortlaufende SSH-Log-Ingestion."""
+"""Command-line entry point for continuous SSH log ingestion."""
 
 from __future__ import annotations
 
@@ -17,50 +17,50 @@ from live_ingestion import LiveIngestionService
 def _positive_float(value: str) -> float:
     number = float(value)
     if not math.isfinite(number) or number <= 0:
-        raise argparse.ArgumentTypeError("muss endlich und grösser als null sein")
+        raise argparse.ArgumentTypeError("must be finite and greater than zero")
     return number
 
 
 def _minimum_two_int(value: str) -> int:
     number = int(value)
     if number < 2:
-        raise argparse.ArgumentTypeError("muss mindestens 2 sein")
+        raise argparse.ArgumentTypeError("must be at least 2")
     return number
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Überwacht eine lokale SSH-Logdatei und speichert neue Events.",
+        description="Monitor a local SSH log file and store new events.",
     )
-    parser.add_argument("--log-file", required=True, type=Path, help="Zu überwachende Logdatei")
+    parser.add_argument("--log-file", required=True, type=Path, help="Log file to monitor")
     parser.add_argument(
         "--database",
         type=Path,
         default=DEFAULT_DATABASE_PATH,
-        help=f"SQLite-Datei (Standard: {DEFAULT_DATABASE_PATH})",
+        help=f"SQLite file (default: {DEFAULT_DATABASE_PATH})",
     )
     parser.add_argument(
         "--poll-interval",
         type=_positive_float,
         default=0.5,
-        help="Polling-Intervall in Sekunden (Standard: 0.5)",
+        help="Polling interval in seconds (default: 0.5)",
     )
     parser.add_argument(
         "--from-start",
         action="store_true",
-        help="Vorhandene Dateiinhalte beim Start ebenfalls einlesen",
+        help="Also read existing file content at startup",
     )
     parser.add_argument(
         "--brute-force-threshold",
         type=_minimum_two_int,
         default=SSHBruteForceDetector.DEFAULT_THRESHOLD,
-        help="Fehlversuche bis zum Alarm (Standard: 5)",
+        help="Failed attempts required for an alert (default: 5)",
     )
     parser.add_argument(
         "--brute-force-window",
         type=_positive_float,
         default=SSHBruteForceDetector.DEFAULT_WINDOW_SECONDS,
-        help="Zeitfenster in Sekunden (Standard: 60)",
+        help="Detection window in seconds (default: 60)",
     )
     return parser
 
@@ -81,9 +81,9 @@ def run(argv: Sequence[str] | None = None) -> int:
         from_start=args.from_start,
     )
 
-    print(f"Logdatei: {args.log_file}")
-    print(f"Datenbank: {args.database}")
-    print("Überwachung läuft. Zum Beenden Ctrl+C drücken.")
+    print(f"Log file: {args.log_file}")
+    print(f"Database: {args.database}")
+    print("Monitoring is running. Press Ctrl+C to stop.")
 
     try:
         for line in tailer.follow():
@@ -97,15 +97,15 @@ def run(argv: Sequence[str] | None = None) -> int:
                 f"{event['ip_address']} ({event['event_timestamp']})"
             )
             if result.detection.outcome == DetectionOutcome.CREATED:
-                print(f"Alarm {result.detection.alert_id} erstellt: SSH_BRUTE_FORCE")
+                print(f"Alert {result.detection.alert_id} created: SSH_BRUTE_FORCE")
             elif result.detection.outcome == DetectionOutcome.UPDATED:
-                print(f"Alarm {result.detection.alert_id} aktualisiert: SSH_BRUTE_FORCE")
+                print(f"Alert {result.detection.alert_id} updated: SSH_BRUTE_FORCE")
     except KeyboardInterrupt:
         tailer.stop()
-        print("\nÜberwachung beendet.")
+        print("\nMonitoring stopped.")
         return 0
     except OSError as exc:
-        print(f"Fehler beim Überwachen der Logdatei: {exc}", file=sys.stderr)
+        print(f"Error while monitoring the log file: {exc}", file=sys.stderr)
         return 1
     finally:
         tailer.close()

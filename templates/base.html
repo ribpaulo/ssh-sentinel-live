@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,18 +8,18 @@
 </head>
 <body>
     <header class="topbar">
-        <a class="brand" href="/" aria-label="Zur Startseite">
+        <a class="brand" href="/" aria-label="Go to home page">
             <span class="brand-mark">S</span>
             <span>SSH Sentinel <small>Mini-SIEM</small></span>
         </a>
-        <nav class="main-nav" aria-label="Hauptnavigation">
-            <a href="/"{% if request.url.path != '/dashboard' %} class="is-active" aria-current="page"{% endif %}>Upload-Analyse</a>
-            <a href="/dashboard"{% if request.url.path == '/dashboard' %} class="is-active" aria-current="page"{% endif %}>Live-Dashboard</a>
+        <nav class="main-nav" aria-label="Main navigation">
+            <a href="/"{% if request.url.path != '/dashboard' %} class="is-active" aria-current="page"{% endif %}>Upload analysis</a>
+            <a href="/dashboard"{% if request.url.path == '/dashboard' %} class="is-active" aria-current="page"{% endif %}>Live dashboard</a>
         </nav>
     </header>
     <main class="container">
         {% block content %}{% endblock %}
     </main>
-    <footer>Lokale Demo-Auswertung · Persistente Live-Daten bleiben auf diesem System</footer>
+    <footer>Local demo analysis · Persistent live data stays on this system</footer>
 </body>
 </html>

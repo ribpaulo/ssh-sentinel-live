@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}SSH Sentinel · Logdatei analysieren{% endblock %}
+{% block title %}SSH Sentinel · Analyze log file{% endblock %}
 {% block content %}
 <section class="hero">
     <div>
-        <p class="eyebrow">Cyber-Security Loganalyse</p>
-        <h1>Verdächtige SSH-Aktivität sichtbar machen.</h1>
-        <p class="lead">Lade eine auth.log-Datei hoch. Das Mini-SIEM erkennt Brute-Force-Muster, auffällige Benutzer und erfolgreiche Logins nach Fehlversuchen.</p>
+        <p class="eyebrow">Cybersecurity log analysis</p>
+        <h1>Make suspicious SSH activity visible.</h1>
+        <p class="lead">Upload an auth.log file. The Mini-SIEM detects brute-force patterns, targeted usernames, and successful logins after failed attempts.</p>
     </div>
     <div class="terminal" aria-hidden="true">
         <span>$ ssh-sentinel scan auth.log</span>
@@ -17,28 +17,28 @@
 <section class="upload-card">
     <div class="section-heading">
         <div>
-            <p class="eyebrow">Neue Analyse</p>
-            <h2>SSH-Logdatei hochladen</h2>
+            <p class="eyebrow">New analysis</p>
+            <h2>Upload SSH log file</h2>
         </div>
-        <span class="privacy-badge">Lokal verarbeitet</span>
+        <span class="privacy-badge">Processed locally</span>
     </div>
     {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
     <form id="upload-form" action="/analyze" method="post" enctype="multipart/form-data">
         <label id="dropzone" class="dropzone" for="log_file">
             <span class="upload-icon">↑</span>
-            <strong>Datei hier ablegen</strong>
-            <span>oder klicken, um eine Datei auszuwählen</span>
-            <span id="file-status" class="file-status" aria-live="polite">.log oder .txt · UTF-8 · maximal 2 MB</span>
+            <strong>Drop file here</strong>
+            <span>or click to select a file</span>
+            <span id="file-status" class="file-status" aria-live="polite">.log or .txt · UTF-8 · maximum 2 MB</span>
             <input class="file-input" id="log_file" name="log_file" type="file" accept=".log,.txt,text/plain" required>
         </label>
-        <button type="submit">Analyse starten <span>→</span></button>
+        <button type="submit">Start analysis <span>→</span></button>
     </form>
 </section>
 
 <section class="rules-grid">
-    <article><span>01</span><h3>Fehlversuche</h3><p>Mehrfache abgelehnte Logins von derselben Quelle.</p></article>
-    <article><span>02</span><h3>Volumen</h3><p>Viele Versuche je IP-Adresse oder Benutzerkonto.</p></article>
-    <article><span>03</span><h3>Account-Treffer</h3><p>Erfolgreiche Anmeldung nach einer Folge von Fehlern.</p></article>
+    <article><span>01</span><h3>Failed attempts</h3><p>Repeated rejected logins from the same source.</p></article>
+    <article><span>02</span><h3>Volume</h3><p>High attempt volume per IP address or user account.</p></article>
+    <article><span>03</span><h3>Account correlation</h3><p>A successful login after a sequence of failures.</p></article>
 </section>
 <script src="{{ url_for('static', path='/upload.js') }}" defer></script>
 {% endblock %}

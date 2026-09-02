@@ -82,8 +82,8 @@ footer { padding: 25px 20px 35px; text-align: center; color: #607970; font-size:
 .risk-orb { flex: 0 0 175px; aspect-ratio: 1; border: 1px solid var(--line); border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, rgba(92,242,175,.13), transparent 70%); }
 .risk-orb span, .risk-orb small { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
 .risk-orb strong { font: 700 50px/1 ui-monospace, monospace; color: var(--accent); margin: 7px 0; }
-.risk-hoch strong, .risk-kritisch strong { color: var(--danger); }
-.risk-mittel strong { color: var(--warning); }
+.risk-high strong, .risk-critical strong { color: var(--danger); }
+.risk-medium strong { color: var(--warning); }
 .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
 .metrics article { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); padding: 19px; display: flex; flex-direction: column; }
 .metrics span, .metrics small { color: var(--muted); font-size: 12px; }
@@ -93,7 +93,7 @@ footer { padding: 25px 20px 35px; text-align: center; color: #607970; font-size:
 .panel { margin-bottom: 18px; }
 .finding-list { display: flex; flex-direction: column; gap: 9px; }
 .finding { display: grid; grid-template-columns: 74px 1fr auto; align-items: center; gap: 16px; background: rgba(3,12,9,.46); padding: 15px; border-radius: 11px; border-left: 3px solid var(--warning); }
-.finding.severity-hoch, .finding.severity-kritisch { border-left-color: var(--danger); }
+.finding.severity-high, .finding.severity-critical { border-left-color: var(--danger); }
 .finding p { color: var(--muted); font-size: 13px; margin-bottom: 0; }
 .finding > strong { color: var(--warning); font: 700 18px ui-monospace, monospace; }
 .severity { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--warning); }
@@ -149,13 +149,15 @@ select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visi
 .severity-high, .status-open, .event-failed-login { color: #ffc0c0; border-color: rgba(255,104,104,.45); background: rgba(255,104,104,.08); }
 .status-acknowledged, .severity-medium { color: var(--warning); border-color: rgba(255,188,87,.45); background: rgba(255,188,87,.08); }
 .status-closed, .status-false-positive, .event-successful-login { color: var(--accent); border-color: rgba(92,242,175,.35); background: rgba(92,242,175,.07); }
-.alert-link { width: auto; margin: 0; padding: 0; display: inline; border-radius: 0; background: transparent; color: var(--text); text-align: left; font-weight: 750; }
+.alert-link { width: auto; margin: 0; padding: 0; display: inline-flex; flex-direction: column; align-items: flex-start; border-radius: 0; background: transparent; color: var(--text); text-align: left; font-weight: 750; }
 .alert-link:hover { color: var(--accent); filter: none; text-decoration: underline; }
+.alert-link-title, .alert-link-rule { display: block; }
+.alert-link-rule { margin-top: 3px; color: var(--muted); font: 10px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .04em; }
 .alert-dialog { width: min(900px, calc(100% - 32px)); max-height: min(82vh, 850px); overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); padding: 28px; color: var(--text); background: var(--surface); box-shadow: 0 28px 100px rgba(0,0,0,.65); }
 .alert-dialog::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px); }
 .dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .dialog-heading h2 { margin-bottom: 12px; }
-.dialog-close { width: 38px; height: 38px; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--surface-2); color: var(--text); font-size: 24px; line-height: 1; }
+.dialog-close { width: 38px; height: 38px; flex: 0 0 38px; margin: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; background: var(--surface-2); color: var(--text); font-size: 24px; line-height: 1; }
 .dialog-description { color: #c2d4cd; line-height: 1.6; }
 .alert-metadata { display: grid; grid-template-columns: max-content 1fr; gap: 8px 18px; border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin: 20px 0 24px; font-size: 13px; }
 .alert-metadata dt { color: var(--muted); }

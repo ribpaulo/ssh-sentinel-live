@@ -1,4 +1,4 @@
-"""Risikobewertung für die vom Detektor erzeugten Funde."""
+"""Risk assessment for findings produced by the detector."""
 
 from collections import defaultdict
 
@@ -6,7 +6,7 @@ from models.analysis import DetectionFinding, RiskBreakdown
 
 
 def calculate_risk(findings: list[DetectionFinding]) -> tuple[int, str, list[RiskBreakdown]]:
-    """Summiert Regelpunkte, begrenzt den Score und bestimmt das Risiko-Level."""
+    """Sum rule points, cap the score, and determine the risk level."""
 
     points_by_rule: dict[tuple[str, str], int] = defaultdict(int)
     for finding in findings:

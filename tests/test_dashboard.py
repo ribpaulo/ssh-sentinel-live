@@ -65,10 +65,16 @@ def test_dashboard_and_existing_upload_page_are_available(dashboard_app: FastAPI
     upload = asyncio.run(_request(dashboard_app, "GET", "/"))
 
     assert dashboard.status_code == 200
-    assert "Live-Dashboard" in dashboard.text
+    assert "Live dashboard" in dashboard.text
+    assert "Status filter" in dashboard.text
+    assert "Investigation note" in dashboard.text
+    assert "Close alert details" in dashboard.text
+    assert bytes.fromhex("416c61726d65").decode() not in dashboard.text
+    assert bytes.fromhex("556e74657273756368756e67736e6f74697a").decode() not in dashboard.text
     assert "/static/dashboard.js" in dashboard.text
     assert upload.status_code == 200
-    assert "SSH-Logdatei hochladen" in upload.text
+    assert "Upload SSH log file" in upload.text
+    assert bytes.fromhex("5353482d4c6f67646174656920686f63686c6164656e").decode() not in upload.text
     assert 'href="/dashboard"' in upload.text
 
 
@@ -112,6 +118,7 @@ def test_events_are_newest_first_limited_and_have_stable_json(
     assert payload[0]["username"] is None
     assert payload[0]["auth_method"] is None
     assert payload[0]["source"] == "examples/live_auth.log"
+    assert payload[0]["event_type"] == "failed_login"
 
 
 @pytest.mark.parametrize("limit", [0, 201])
@@ -180,7 +187,7 @@ def test_alert_detail_contains_linked_events_and_unknown_id_is_404(
     assert [event["id"] for event in payload["events"]] == [first_event, second_event]
     assert "raw_line" not in payload["events"][0]
     assert missing.status_code == 404
-    assert missing.json() == {"detail": "Alarm nicht gefunden."}
+    assert missing.json() == {"detail": "Alert not found."}
 
 
 def test_temporary_database_path_and_dashboard_static_file(
@@ -200,3 +207,16 @@ def test_temporary_database_path_and_dashboard_static_file(
     assert "refreshDashboard" in script_path.read_text(encoding="utf-8")
     assert events.status_code == 200
     assert events.json() == []
+
+
+def test_dashboard_badge_cells_do_not_prepend_fallback_text() -> None:
+    script_path = Path(__file__).parents[1] / "static" / "dashboard.js"
+    script = script_path.read_text(encoding="utf-8")
+
+    assert 'appendCell(row, "")' not in script
+    assert "appendBadgeCell(row, event.event_type, \"event\")" in script
+    assert "appendBadgeCell(row, alert.severity, \"severity\")" in script
+    assert "appendBadgeCell(row, alert.status, \"status\")" in script
+    assert 'titleCell.textContent = "—"' in script
+    assert "detailButton.append(title)" in script
+    assert "detailButton.append(rule)" in script
