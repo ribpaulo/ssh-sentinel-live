@@ -189,6 +189,29 @@ werden als hohes Risiko bewertet, ohne bereits einen erfolgreichen Zugriff zu
 unterstellen. Schwellenwert und Fenster können mit `--brute-force-threshold`
 beziehungsweise `--brute-force-window` angepasst werden.
 
+## Live-Dashboard
+
+Das read-only Dashboard ist nach dem Start der FastAPI-Anwendung unter
+[http://127.0.0.1:8000/dashboard](http://127.0.0.1:8000/dashboard) erreichbar.
+Es zeigt die zuletzt gespeicherten SSH-Events, persistente Brute-Force-Alarme
+und die mit einem Alarm verknüpften Events. Die Daten werden im sichtbaren
+Browserfenster ungefähr alle vier Sekunden aktualisiert.
+
+Standardmässig liest das Dashboard `data/ssh_sentinel.db`. Ein anderer Pfad kann
+für die Web-Anwendung über die Umgebungsvariable `SSH_SENTINEL_DATABASE`
+konfiguriert werden:
+
+```bash
+SSH_SENTINEL_DATABASE=/tmp/ssh_sentinel.db python -m uvicorn main:app --reload
+```
+
+Die Logüberwachung wird weiterhin separat gestartet. Dabei muss derselbe
+Datenbankpfad angegeben werden:
+
+```bash
+python live_ingest.py --log-file /var/log/auth.log --database /tmp/ssh_sentinel.db
+```
+
 ## Eigenständige ausführbare Datei erstellen
 
 Die Anwendung wird mit PyInstaller als einzelne ausführbare Datei verpackt. Für die Ausführung des mit PyInstaller erstellten Programms ist auf dem Zielsystem keine separate Python-Installation und keine manuelle Installation der in requirements.txt aufgeführten Python-Pakete erforderlich. Die Jinja2-Templates, das CSS und das Drag-and-drop-JavaScript sind im Executable enthalten.

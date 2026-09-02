@@ -12,11 +12,14 @@
             <span class="brand-mark">S</span>
             <span>SSH Sentinel <small>Mini-SIEM</small></span>
         </a>
-        <span class="demo-label">DEMO-ANALYSE</span>
+        <nav class="main-nav" aria-label="Hauptnavigation">
+            <a href="/"{% if request.url.path != '/dashboard' %} class="is-active" aria-current="page"{% endif %}>Upload-Analyse</a>
+            <a href="/dashboard"{% if request.url.path == '/dashboard' %} class="is-active" aria-current="page"{% endif %}>Live-Dashboard</a>
+        </nav>
     </header>
     <main class="container">
         {% block content %}{% endblock %}
     </main>
-    <footer>Lokale Demo-Auswertung · Keine Daten werden dauerhaft gespeichert</footer>
+    <footer>Lokale Demo-Auswertung · Persistente Live-Daten bleiben auf diesem System</footer>
 </body>
 </html>

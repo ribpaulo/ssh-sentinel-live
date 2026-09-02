@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Live-Dashboard · SSH Sentinel{% endblock %}
+{% block content %}
+<section class="dashboard-header">
+    <div>
+        <p class="eyebrow">Persistente SSH-Überwachung</p>
+        <h1>Live-Dashboard</h1>
+        <p class="lead">Zuletzt gespeicherte SSH-Ereignisse und Brute-Force-Alarme aus der lokalen SQLite-Datenbank.</p>
+    </div>
+    <div id="connection-status" class="connection-status is-loading" role="status" aria-live="polite">
+        <span aria-hidden="true">●</span>
+        <strong>Verbindung wird aufgebaut</strong>
+    </div>
+</section>
+
+<section class="dashboard-metrics" aria-label="Zusammenfassung">
+    <article>
+        <span>Geladene Events</span>
+        <strong id="event-count">0</strong>
+        <small>maximal 50 Einträge</small>
+    </article>
+    <article>
+        <span>Aktive Alarme</span>
+        <strong id="active-alert-count">0</strong>
+        <small>OPEN oder ACKNOWLEDGED</small>
+    </article>
+    <article>
+        <span>Letzte Aktualisierung</span>
+        <strong id="last-updated" class="metric-time">—</strong>
+        <small>automatisch alle 4 Sekunden</small>
+    </article>
+</section>
+
+<section class="panel dashboard-panel">
+    <div class="section-heading">
+        <div><p class="eyebrow">Detection</p><h2>Alarme</h2></div>
+        <span id="alert-count-badge" class="count-badge">0 geladen</span>
+    </div>
+    <div class="table-wrap">
+        <table class="dashboard-table">
+            <thead><tr>
+                <th>ID</th><th>Erstellt</th><th>Severity</th><th>Titel / Regel</th>
+                <th>IP-Adresse</th><th>Benutzer</th><th>Events</th><th>Zeitfenster</th><th>Status</th>
+            </tr></thead>
+            <tbody id="alerts-body">
+                <tr><td colspan="9" class="table-empty">Noch keine Alarme geladen.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="panel dashboard-panel">
+    <div class="section-heading">
+        <div><p class="eyebrow">Ingestion</p><h2>SSH-Events</h2></div>
+        <span id="event-count-badge" class="count-badge">0 geladen</span>
+    </div>
+    <div class="table-wrap">
+        <table class="dashboard-table">
+            <thead><tr>
+                <th>Zeitpunkt</th><th>Eventtyp</th><th>Hostname</th><th>IP-Adresse</th>
+                <th>Benutzer</th><th>Authentifizierung</th><th>Quelle</th>
+            </tr></thead>
+            <tbody id="events-body">
+                <tr><td colspan="7" class="table-empty">Noch keine Events geladen.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<dialog id="alert-dialog" class="alert-dialog" aria-labelledby="alert-dialog-title">
+    <div class="dialog-heading">
+        <div>
+            <p class="eyebrow">Alarmdetails</p>
+            <h2 id="alert-dialog-title">Alarm</h2>
+        </div>
+        <form method="dialog"><button class="dialog-close" type="submit" aria-label="Details schliessen">×</button></form>
+    </div>
+    <p id="alert-description" class="dialog-description"></p>
+    <dl id="alert-metadata" class="alert-metadata"></dl>
+    <h3>Verknüpfte Events</h3>
+    <div class="table-wrap">
+        <table class="dashboard-table">
+            <thead><tr><th>Zeitpunkt</th><th>Typ</th><th>Host</th><th>IP-Adresse</th><th>Benutzer</th><th>Methode</th></tr></thead>
+            <tbody id="alert-events-body"></tbody>
+        </table>
+    </div>
+</dialog>
+
+<script src="{{ url_for('static', path='/dashboard.js') }}" defer></script>
+{% endblock %}

@@ -109,6 +109,8 @@ CREATE TABLE IF NOT EXISTS alert_events (
 
 CREATE INDEX IF NOT EXISTS idx_events_event_timestamp
     ON events(event_timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_events_timestamp_jd
+    ON events(julianday(event_timestamp) DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_events_ip_address
     ON events(ip_address);
 CREATE INDEX IF NOT EXISTS idx_events_type_ip_timestamp_jd
@@ -269,7 +271,7 @@ class Database:
             return connection.execute(
                 """
                 SELECT * FROM events
-                ORDER BY event_timestamp DESC, id DESC
+                ORDER BY julianday(event_timestamp) DESC, id DESC
                 LIMIT ?
                 """,
                 (_limit_value(limit),),
@@ -524,10 +526,19 @@ class Database:
 
     def get_alerts(
         self,
-        status: AlertStatus | str,
+        status: AlertStatus | str | None = None,
         limit: int = 100,
     ) -> list[sqlite3.Row]:
         with self._connection() as connection:
+            if status is None:
+                return connection.execute(
+                    """
+                    SELECT * FROM alerts
+                    ORDER BY created_at DESC, id DESC
+                    LIMIT ?
+                    """,
+                    (_limit_value(limit),),
+                ).fetchall()
             return connection.execute(
                 """
                 SELECT * FROM alerts
