@@ -555,14 +555,40 @@ class Database:
         status: AlertStatus | str,
         note: str | None = None,
     ) -> None:
+        self.update_alert_status_and_note(alert_id, status, note)
+
+    def update_alert_status_and_note(
+        self,
+        alert_id: int,
+        status: AlertStatus | str,
+        note: str | None,
+    ) -> sqlite3.Row:
+        """Aktualisiert Status und Notiz atomar und liefert den Alarm zurück."""
+
+        status_value = _status_value(status)
         with self._connection() as connection:
-            cursor = connection.execute(
+            connection.execute("BEGIN IMMEDIATE")
+            updated_at = _utc_now()
+            connection.execute(
                 """
                 UPDATE alerts
                 SET status = ?, note = ?, updated_at = ?
                 WHERE id = ?
+                  AND (status <> ? OR note IS NOT ?)
                 """,
-                (_status_value(status), note, _utc_now(), alert_id),
+                (
+                    status_value,
+                    note,
+                    updated_at,
+                    alert_id,
+                    status_value,
+                    note,
+                ),
             )
-            if cursor.rowcount != 1:
+            alert = connection.execute(
+                "SELECT * FROM alerts WHERE id = ?",
+                (alert_id,),
+            ).fetchone()
+            if alert is None:
                 raise LookupError(f"Alert {alert_id} does not exist")
+            return alert

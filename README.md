@@ -191,11 +191,25 @@ beziehungsweise `--brute-force-window` angepasst werden.
 
 ## Live-Dashboard
 
-Das read-only Dashboard ist nach dem Start der FastAPI-Anwendung unter
+Das Live-Dashboard ist nach dem Start der FastAPI-Anwendung unter
 [http://127.0.0.1:8000/dashboard](http://127.0.0.1:8000/dashboard) erreichbar.
 Es zeigt die zuletzt gespeicherten SSH-Events, persistente Brute-Force-Alarme
 und die mit einem Alarm verknüpften Events. Die Daten werden im sichtbaren
 Browserfenster ungefähr alle vier Sekunden aktualisiert.
+
+Die Alarmliste kann nach `OPEN`, `ACKNOWLEDGED`, `FALSE_POSITIVE` und `CLOSED`
+gefiltert werden. Im Alarmdialog lassen sich Status und eine optionale
+Untersuchungsnotiz bearbeiten:
+
+- `OPEN`: neuer oder weiterhin unbehandelter Alarm
+- `ACKNOWLEDGED`: Alarm wurde zur Kenntnis genommen und wird untersucht
+- `FALSE_POSITIVE`: Aktivität wurde als Fehlalarm bewertet
+- `CLOSED`: Untersuchung ist abgeschlossen
+
+`OPEN` und `ACKNOWLEDGED` gelten für die Live-Detection weiterhin als aktiv und
+können durch neue passende Events erweitert werden. `FALSE_POSITIVE` und
+`CLOSED` werden nicht mehr erweitert. Gespeicherte Untersuchungsnotizen bleiben
+bei einer späteren Erweiterung erhalten.
 
 Standardmässig liest das Dashboard `data/ssh_sentinel.db`. Ein anderer Pfad kann
 für die Web-Anwendung über die Umgebungsvariable `SSH_SENTINEL_DATABASE`

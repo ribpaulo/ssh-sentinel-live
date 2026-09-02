@@ -34,7 +34,17 @@
 <section class="panel dashboard-panel">
     <div class="section-heading">
         <div><p class="eyebrow">Detection</p><h2>Alarme</h2></div>
-        <span id="alert-count-badge" class="count-badge">0 geladen</span>
+        <div class="alert-list-controls">
+            <label for="alert-status-filter">Statusfilter</label>
+            <select id="alert-status-filter">
+                <option value="">Alle</option>
+                <option value="OPEN">OPEN</option>
+                <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
+                <option value="FALSE_POSITIVE">FALSE_POSITIVE</option>
+                <option value="CLOSED">CLOSED</option>
+            </select>
+            <span id="alert-count-badge" class="count-badge">0 geladen</span>
+        </div>
     </div>
     <div class="table-wrap">
         <table class="dashboard-table">
@@ -77,6 +87,26 @@
     </div>
     <p id="alert-description" class="dialog-description"></p>
     <dl id="alert-metadata" class="alert-metadata"></dl>
+    <form id="alert-edit-form" class="alert-edit-form">
+        <div class="form-field">
+            <label for="alert-status">Status</label>
+            <select id="alert-status" name="status" required>
+                <option value="OPEN">OPEN</option>
+                <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
+                <option value="FALSE_POSITIVE">FALSE_POSITIVE</option>
+                <option value="CLOSED">CLOSED</option>
+            </select>
+        </div>
+        <div class="form-field">
+            <label for="alert-note">Untersuchungsnotiz <span>optional, maximal 2000 Zeichen</span></label>
+            <textarea id="alert-note" name="note" rows="5" maxlength="2000" placeholder="Beobachtungen und Untersuchungsergebnis festhalten"></textarea>
+        </div>
+        <p id="alert-save-message" class="save-message" role="status" aria-live="polite"></p>
+        <div class="dialog-actions">
+            <button id="alert-cancel" class="secondary-button" type="button">Schliessen</button>
+            <button id="alert-save" class="save-button" type="submit">Änderungen speichern</button>
+        </div>
+    </form>
     <h3>Verknüpfte Events</h3>
     <div class="table-wrap">
         <table class="dashboard-table">

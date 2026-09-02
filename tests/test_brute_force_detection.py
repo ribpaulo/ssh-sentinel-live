@@ -220,7 +220,11 @@ def test_acknowledged_alert_is_extended(database: Database) -> None:
     detector = SSHBruteForceDetector(database, threshold=2)
     created = detector.evaluate(event_ids[-1])
     assert created.alert_id is not None
-    database.update_alert_status(created.alert_id, AlertStatus.ACKNOWLEDGED)
+    database.update_alert_status(
+        created.alert_id,
+        AlertStatus.ACKNOWLEDGED,
+        note="Investigation remains active",
+    )
     additional_event = save_event(database, 2)
 
     updated = detector.evaluate(additional_event)
@@ -229,6 +233,7 @@ def test_acknowledged_alert_is_extended(database: Database) -> None:
     assert updated.outcome == DetectionOutcome.UPDATED
     assert alert is not None
     assert alert["status"] == "ACKNOWLEDGED"
+    assert alert["note"] == "Investigation remains active"
     assert alert["event_count"] == 3
 
 
@@ -244,7 +249,11 @@ def test_terminal_alert_is_not_extended(
     detector = SSHBruteForceDetector(database, threshold=2)
     original = detector.evaluate(event_ids[-1])
     assert original.alert_id is not None
-    database.update_alert_status(original.alert_id, terminal_status)
+    database.update_alert_status(
+        original.alert_id,
+        terminal_status,
+        note="Final investigation result",
+    )
     additional_event = save_event(database, 2)
 
     result = detector.evaluate(additional_event)
@@ -254,6 +263,7 @@ def test_terminal_alert_is_not_extended(
     assert result.alert_id != original.alert_id
     assert old_alert is not None
     assert old_alert["status"] == terminal_status.value
+    assert old_alert["note"] == "Final investigation result"
     assert old_alert["event_count"] == 2
 
 
