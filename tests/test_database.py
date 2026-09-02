@@ -77,6 +77,7 @@ def test_initialize_creates_parent_directory_tables_and_indexes(tmp_path: Path) 
     assert {"events", "alerts", "alert_events"} <= tables
     assert {
         "idx_events_event_timestamp",
+        "idx_events_timestamp_jd",
         "idx_events_ip_address",
         "idx_events_type_ip_timestamp_jd",
         "idx_alerts_status",

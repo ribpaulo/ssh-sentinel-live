@@ -1,12 +1,24 @@
 """HTTP-Routen für die HTML-Oberfläche und die JSON-API."""
 
 from pathlib import Path
+from typing import Annotated
 
-from fastapi import APIRouter, File, HTTPException, Request, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Path as ApiPath,
+    Query,
+    Request,
+    UploadFile,
+)
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from database import AlertStatus, Database
 from models.analysis import AnalysisResult
+from models.dashboard import DashboardAlert, DashboardAlertDetail, DashboardEvent
 from service import analyze_log
 
 
@@ -16,6 +28,49 @@ router = APIRouter()
 
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024
 ALLOWED_SUFFIXES = {".log", ".txt"}
+
+
+async def get_database(request: Request) -> Database:
+    return request.app.state.database
+
+
+def _event_payload(row: object) -> dict[str, object]:
+    values = dict(row)  # type: ignore[arg-type]
+    return {
+        key: values[key]
+        for key in (
+            "id",
+            "event_timestamp",
+            "hostname",
+            "event_type",
+            "ip_address",
+            "username",
+            "auth_method",
+            "source",
+        )
+    }
+
+
+def _alert_payload(row: object) -> dict[str, object]:
+    values = dict(row)  # type: ignore[arg-type]
+    return {
+        key: values[key]
+        for key in (
+            "id",
+            "rule_id",
+            "title",
+            "severity",
+            "score",
+            "ip_address",
+            "username",
+            "event_count",
+            "window_start",
+            "window_end",
+            "status",
+            "created_at",
+            "updated_at",
+        )
+    }
 
 
 async def _read_log_file(upload: UploadFile) -> tuple[str, str]:
@@ -49,6 +104,13 @@ async def start_page(request: Request) -> HTMLResponse:
     """Zeigt die Upload-Seite."""
 
     return templates.TemplateResponse(request=request, name="index.html")
+
+
+@router.get("/dashboard", response_class=HTMLResponse)
+async def dashboard_page(request: Request) -> HTMLResponse:
+    """Zeigt das read-only Live-Dashboard."""
+
+    return templates.TemplateResponse(request=request, name="dashboard.html")
 
 
 @router.post("/analyze", response_class=HTMLResponse)
@@ -86,3 +148,40 @@ async def health() -> dict[str, str]:
     """Einfacher Health-Check für Entwicklung und Deployment."""
 
     return {"status": "ok"}
+
+
+@router.get("/api/events", response_model=list[DashboardEvent])
+async def recent_events(
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    database: Database = Depends(get_database),
+) -> list[dict[str, object]]:
+    """Liefert die neuesten persistenten SSH-Ereignisse."""
+
+    return [_event_payload(row) for row in database.get_recent_events(limit)]
+
+
+@router.get("/api/alerts", response_model=list[DashboardAlert])
+async def recent_alerts(
+    status: Annotated[AlertStatus | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    database: Database = Depends(get_database),
+) -> list[dict[str, object]]:
+    """Liefert die neuesten Alarme, optional nach Status gefiltert."""
+
+    return [_alert_payload(row) for row in database.get_alerts(status, limit)]
+
+
+@router.get("/api/alerts/{alert_id}", response_model=DashboardAlertDetail)
+async def alert_detail(
+    alert_id: Annotated[int, ApiPath(ge=1)],
+    database: Database = Depends(get_database),
+) -> dict[str, object]:
+    """Liefert einen Alarm inklusive seiner verknüpften Events."""
+
+    alert = database.get_alert_with_events(alert_id)
+    if alert is None:
+        raise HTTPException(status_code=404, detail="Alarm nicht gefunden.")
+    payload = _alert_payload(alert)
+    payload["description"] = alert["description"]
+    payload["events"] = [_event_payload(event) for event in alert["events"]]
+    return payload
